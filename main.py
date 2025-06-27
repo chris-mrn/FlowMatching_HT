@@ -29,7 +29,7 @@ def main():
     X1 = mnist_data.data.unsqueeze(1)
     # transform X1 to normalize it and put it to float
     X1 = X1 / 255.0
-    X1 = X1.float()[:640]
+    X1 = X1.float()[:1000]
     X0 = torch.rand_like(torch.Tensor(X1))
 
     dataloader1 = torch.utils.data.DataLoader(X1, batch_size=64, shuffle=True)
@@ -39,7 +39,7 @@ def main():
     model_score = NCSN(net_score, L=10, device=args.device)
     optimizer_score = torch.optim.Adam(net_score.parameters(), 1e-3)
 
-    model_score.train(optimizer_score, epochs=100, dataloader=dataloader1, print_interval=10)
+    model_score.train(optimizer_score, epochs=150, dataloader=dataloader1, print_interval=10)
     gen_score_samples, hist_score = model_score.sample_from(X0[:10])
 
 
@@ -47,7 +47,7 @@ def main():
     model_FM = GaussFlowMatching_OT(net_fm, device=args.device)
     optimizer_fm = torch.optim.Adam(net_fm.parameters(), 1e-3)
 
-    model_FM.train(optimizer_fm, dataloader1 , dataloader0 , n_epochs=100)
+    model_FM.train(optimizer_fm, dataloader1 , dataloader0 , n_epochs=150)
     gen_FM_samples, hist_FM = model_FM.sample_from(X0[:10])
 
     # Show and save FM samples

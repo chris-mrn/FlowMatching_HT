@@ -2,10 +2,12 @@ import torch
 import torch.nn as nn
 import torchvision
 from net.unet import Unet
+from net.net2D import FMnet, MLP2D
 from models.Flow import GaussFlowMatching_OT
 from models.Score import NCSN
 import torchvision.transforms as transforms
 from utils import parse_arguments, show_images
+import numpy as np
 
 
 
@@ -26,16 +28,29 @@ def main():
     root_mnist = '/Users/christophermarouani/Desktop/mnist'
     mnist_data = torchvision.datasets.MNIST(root_mnist, download=True, transform=transform)
 
-    X1 = mnist_data.data.unsqueeze(1)
+    #X1 = mnist_data.data.unsqueeze(1)
     # transform X1 to normalize it and put it to float
-    X1 = X1 / 255.0
-    X1 = X1.float()[:1000]
+    #X1 = X1 / 255.0
+    #X1 = X1.float()[:1000]
+
+
+    # ST1 dataset
+    X1 = torch.tensor(np.load("data/ST1.npy"))
+
+    print(X1.shape)
+
     X0 = torch.rand_like(torch.Tensor(X1))
+
+
 
     dataloader1 = torch.utils.data.DataLoader(X1, batch_size=64, shuffle=True)
     dataloader0 = torch.utils.data.DataLoader(X0, batch_size=64, shuffle=True)
 
-    net_score = Unet()
+
+
+    # net_score = Unet()
+    h = 64
+    net_score = MLP2D(hidden_dim=h, num_layers=4)
     model_score = NCSN(net_score, L=10, device=args.device)
     optimizer_score = torch.optim.Adam(net_score.parameters(), 1e-3)
 
@@ -43,7 +58,7 @@ def main():
     gen_score_samples, hist_score = model_score.sample_from(X0[:10])
 
 
-    net_fm = Unet()
+    net_fm = FMnet()
     model_FM = GaussFlowMatching_OT(net_fm, device=args.device)
     optimizer_fm = torch.optim.Adam(net_fm.parameters(), 1e-3)
 

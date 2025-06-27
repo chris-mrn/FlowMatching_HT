@@ -3,10 +3,10 @@ import subprocess
 
 # Clone the repository
 subprocess.run(
-    ["git", "clone", "--branch", "main", "--single-branch", "https://github.com/chris-mrn/Teach2Teach.git"],
+    ["git", "clone", "--branch", "main", "--single-branch", "https://github.com/chris-mrn/FlowMatching_HT.git"],
     check=True,
 )
-os.chdir("Teach2Teach")
+os.chdir("FlowMatching_HT")
 
 
 # Define hyperparameters

@@ -29,7 +29,7 @@ def main():
     X1 = mnist_data.data.unsqueeze(1)
     # transform X1 to normalize it and put it to float
     X1 = X1 / 255.0
-    X1 = X1.float()[:64]
+    X1 = X1.float()[:640]
     X0 = torch.rand_like(torch.Tensor(X1))
 
     dataloader1 = torch.utils.data.DataLoader(X1, batch_size=64, shuffle=True)

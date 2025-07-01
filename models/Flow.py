@@ -17,6 +17,7 @@ class GaussFlowMatching_OT:
                 x1 = x1.to(self.device)
 
                 t = torch.rand(len(x1), 1)
+                t = t.to(self.device)
                 x_t = (1 - t) * x0 + t * x1
 
                 dx_t = x1 - x0

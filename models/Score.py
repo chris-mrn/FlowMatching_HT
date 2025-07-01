@@ -1,5 +1,5 @@
 import torch
-import numpy as np
+
 
 class NCSN:
     def __init__(self, model, L=10, sigma_low=0.01, sigma_high=1, device=None):
@@ -25,7 +25,7 @@ class NCSN:
                 for _ in range(T):
                     noise_level = self.sigma[i].expand(x_step.shape[0], 1)
                     # adapt to x shape
-                    noise_level = noise_level.view(-1, 1, 1, 1)
+                    noise_level = noise_level.view(-1, 1)
                     x_step = x_step + alpha_i / 2 * self.model(x_step, noise_level) / noise_level \
                              + torch.sqrt(alpha_i) * torch.randn_like(x_step)
                 x_hist[i + 1] = x_step
@@ -45,7 +45,10 @@ class NCSN:
                 x = x.to(self.device)
 
                 batch_size = x.size(0)
-                sigma_level_idx = torch.randint(0, self.L, (batch_size,), device=self.device)
+                sigma_level_idx = torch.randint(0,
+                                                self.L,
+                                                (batch_size,),
+                                                device=self.device)
                 sigma_level = self.sigma[sigma_level_idx].unsqueeze(1)
 
                 noise = torch.randn_like(x)

@@ -1,1 +1,1 @@
-# Teach2Teach
+# Flow matching for Heavy tail distribution

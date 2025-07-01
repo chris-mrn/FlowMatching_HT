@@ -16,11 +16,7 @@ class GaussFlowMatching_OT:
                 x0 = x0.to(self.device)
                 x1 = x1.to(self.device)
 
-                batch_size = x0.size(0)
-                t = torch.rand(batch_size, 1, device=self.device)
-
-                t = t.view(-1, 1, 1, 1)
-
+                t = torch.rand(len(x1), 1)
                 x_t = (1 - t) * x0 + t * x1
 
                 dx_t = x1 - x0
@@ -39,14 +35,10 @@ class GaussFlowMatching_OT:
         return self.net(x_t, t)
 
     def step(self, x_t, t_start, t_end):
-        t_start = t_start.view(-1, 1).to(self.device)
-        t_end = t_end.view(-1, 1).to(self.device)
-        t_start = t_start.view(-1, 1, 1, 1)
-        t_end = t_end.view(-1, 1, 1, 1)
-        mid_t = t_start + (t_end - t_start) / 2
-
-        midpoint = x_t + self.flow(x_t, t_start) * (t_end - t_start) / 2
-        return x_t + (t_end - t_start) * self.flow(midpoint, mid_t)
+        t_start = t_start.view(1, 1).expand(x_t.shape[0], 1)
+        # For simplicity, using midpoint ODE solver in this example
+        return x_t + (t_end - t_start) * self.flow(x_t + self.flow(x_t, t_start) * (t_end - t_start) / 2,
+        t_start + (t_end - t_start) / 2)
 
     def sample_from(self, X0, n_steps=10):
         time_steps = torch.linspace(0, 1.0, n_steps + 1, device=self.device)
@@ -61,5 +53,5 @@ class GaussFlowMatching_OT:
         return x, hist
 
     def coupling(self):
-        # You can implement a custom coupling strategy here if needed
+        # Implement your custom coupling
         pass

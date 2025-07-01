@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
+
 class MLP2D(nn.Module):
     """
     Naive MLP for 2D data conditioned on noise level.
@@ -22,6 +23,7 @@ class MLP2D(nn.Module):
         x = torch.cat([self.linpos(x), self.pe(sigma)], dim=1)
         return self.mlp(x)
 
+
 class PE(nn.Module):
     """
     Positional encoding.
@@ -29,12 +31,16 @@ class PE(nn.Module):
     def __init__(self, num_pos_feats=64, temperature=10000):
         super().__init__()
         dim_t = torch.arange(num_pos_feats)
-        self.register_buffer("dim_t", temperature ** (2 * (dim_t // 2) / num_pos_feats))
+        self.register_buffer("dim_t",
+                             temperature ** (2 * (dim_t // 2) / num_pos_feats))
 
     def forward(self, x):
         pos_x = x[:, :, None] / self.dim_t
-        pos = torch.stack([pos_x[:, :, 0::2].sin(), pos_x[:, :, 1::2].cos()], dim=3).flatten(1)
+        pos = torch.stack([pos_x[:, :, 0::2].sin(),
+                           pos_x[:, :, 1::2].cos()],
+                          dim=3).flatten(1)
         return pos
+
 
 class FMnet(nn.Module):
     def __init__(self, dim: int = 2, h: int = 64):
@@ -47,5 +53,6 @@ class FMnet(nn.Module):
                 nn.Linear(h, h),
                 nn.ELU(),
                 nn.Linear(h, dim))
+
     def forward(self, x_t: Tensor, t: Tensor) -> Tensor:
         return self.net(torch.cat((t, x_t), -1))

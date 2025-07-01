@@ -75,7 +75,6 @@ class TimeEmbedding(nn.Module):
         return self.te_block(x)
 
 #---------------------------------------------------------------
-
 class SelfAttentionBlock(nn.Module):
 
     def __init__(self,
@@ -558,10 +557,14 @@ class CUnet(nn.Module):
         self.num_midc_layers = num_midc_layers
         self.num_upc_layers = num_upc_layers
 
-        self.up_sample = list(reversed(self.down_sample)) # [False, True, True]
+        # [False, True, True]
+        self.up_sample = list(reversed(self.down_sample))
 
         # Initial Convolution
-        self.cv1 = nn.Conv2d(self.im_channels, self.down_ch[0], kernel_size=3, padding=1)
+        self.cv1 = nn.Conv2d(self.im_channels,
+                             self.down_ch[0],
+                             kernel_size=3,
+                             padding=1)
 
         # Initial Time Embedding Projection
         self.t_proj = nn.Sequential(
@@ -635,6 +638,6 @@ class CUnet(nn.Module):
 
         # Final Conv
         out = self.cv2(out)
-        t = t.view(-1,1,1,1)
+        t = t.view(-1, 1, 1, 1)
 
         return (1-t)*x + t*out

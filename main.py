@@ -17,23 +17,6 @@ def main():
     # Parse arguments
     args = parse_arguments()
 
-    # transform = transforms.Compose(
-        # [transforms.ToTensor(),
-        # transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
-
-    # make sure the data have the format (Batch, Channel, Height, Width)
-
-    # root_cifar = '/Users/christophermarouani/Desktop/cifar-10-batches-py'
-    # cifar_data = torchvision.datasets.CIFAR10(root_cifar, download=True, transform=transform)
-
-    # root_mnist = '/Users/christophermarouani/Desktop/mnist'
-    # mnist_data = torchvision.datasets.MNIST(root_mnist, download=True, transform=transform)
-
-    #X1 = mnist_data.data.unsqueeze(1)
-    # transform X1 to normalize it and put it to float
-    # X1 = X1 / 255.0
-    # X1 = X1.float()[:1000]
-    # Loading the dataset
     X1 = torch.tensor(np.load("data/ST2.npy"))
     X0 = torch.rand_like(torch.Tensor(X1))
     # Creating dataloader
@@ -41,30 +24,17 @@ def main():
     dataloader0 = torch.utils.data.DataLoader(X0, batch_size=512, shuffle=True)
 
 
-    # Initialization of the model
-    h = 64
-    net_score = MLP2D(hidden_dim=h, num_layers=4)
-    model_score = NCSN(net_score, L=10, device=args.device)
-    optimizer_score = torch.optim.Adam(net_score.parameters(), 1e-3)
+    net_fm = FMnet()
+    model_FM = GaussFlowMatching_OT(net_fm, device=args.device)
+    optimizer_fm = torch.optim.Adam(net_fm.parameters(), 5e-4)
 
-    model_score.train(optimizer_score, epochs=100, dataloader=dataloader1, print_interval=10)
-    gen_score_samples, hist_score = model_score.sample_from(X0[:4000])
+    model_FM.train(optimizer_fm, dataloader1 , dataloader0 , n_epochs=50)
+    gen_FM_samples, hist_FM = model_FM.sample_from(X0[:4000])
 
-
-    #net_fm = FMnet()
-    #model_FM = GaussFlowMatching_OT(net_fm, device=args.device)
-    #optimizer_fm = torch.optim.Adam(net_fm.parameters(), 5e-4)
-
-    #model_FM.train(optimizer_fm, dataloader1 , dataloader0 , n_epochs=50)
-    #gen_FM_samples, hist_FM = model_FM.sample_from(X0[:4000])
-
-    # Show and save FM samples
-    #show_images(gen_score_samples, title="Score Matching Samples", save_path="outputs/gen_NCSN_samples.png")
-    #show_images(gen_FM_samples, title="FM Samples", save_path="outputs/gen_FM_samples.png")
     # Plots
     plot_model_samples(
-        [gen_score_samples],
-        ['NCSN'],
+        [gen_FM_samples],
+        ['FM'],
         X1)
 
 

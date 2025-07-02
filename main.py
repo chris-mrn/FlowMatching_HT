@@ -10,6 +10,7 @@ from utils import parse_arguments, show_images
 import numpy as np
 from utils import plot_model_samples
 import matplotlib.pyplot as plt
+import flow_matching
 
 from models.HT_Flow import HT_FlowMatching_X0
 from net.network import MLP, MLP_TailParam

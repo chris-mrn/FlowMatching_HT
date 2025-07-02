@@ -1,0 +1,14 @@
+torch==1.10.0+cu113
+wandb==0.12.9
+numpy==1.22.1
+pandas==1.4.2
+statsmodels==0.13.1
+tqdm==4.61.2
+matplotlib==3.5.1
+scikit-learn==1.0.1
+nflows==0.14
+xarray==0.20.2
+seaborn==0.11.2
+openturns==1.16
+scipy==1.7.0
+copulas==0.6.0

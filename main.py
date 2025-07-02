@@ -41,7 +41,7 @@ def main():
     lr = 1e-4
     epochs = 100
 
-    device = 'cpu'
+    device = 'cuda'
     flow_net = MLP(input_dim=dim, time_dim=1, hidden_dim=hidden_dim).to(device)
     tail_net = MLP_TailParam(time_dim=1, hidden_dim=hidden_dim//2, output_dim=4*dim).to(device)
 

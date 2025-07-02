@@ -51,7 +51,7 @@ def main():
 
     model_ht_fm = HT_FlowMatching_X0(tail_net, flow_net, ttf, dim, device)
     model_ht_fm.train(optim_net, optim_tail, dataloader1, dataloader0, epochs)
-    gen_samples_FMHT = model_ht_fm.generate(X0[0:10000])
+    gen_samples_FMHT = model_ht_fm.generate(X0[0:10000].to(device))
     print(device)
 
     # Plots

@@ -54,39 +54,38 @@ def show_images(tensor, title=None, nrow=5, save_path=None):
     plt.close()  # Don't display inline if only saving
 
 
-def plot_model_samples(sample_list, model_names, ground_truth, figsize=(20, 5)):
+def plot_model_samples(sample_list, model_names, ground_truth, figsize=(20, 5), save_path=None):
     """
     Plots samples from different models and the ground truth side by side,
-    with shared axis limits for better comparison.
+    with shared axis limits for better comparison. Can optionally save the plot.
 
     Args:
         sample_list (list of torch.Tensor): List of tensors, each of shape (n_samples, 2).
         model_names (list of str): Names of the corresponding models.
         ground_truth (torch.Tensor or np.ndarray): Ground truth data, shape (n_samples, 2).
         figsize (tuple): Size of the figure.
-
-    Returns:
-        None
+        save_path (str or Path, optional): If provided, saves the plot to this path.
     """
     num_models = len(sample_list)
     fig, axs = plt.subplots(1, num_models + 1, figsize=figsize)
 
-    # Convert all tensors to numpy for unified processing
+    # Convert all tensors to numpy
     all_samples = sample_list + [ground_truth]
     all_data = [s.detach().cpu().numpy() if isinstance(s, torch.Tensor) else s for s in all_samples]
     concatenated = np.concatenate(all_data, axis=0)
 
-    # Compute global limits
+    # Compute axis limits
     x_min, x_max = concatenated[:, 0].min(), concatenated[:, 0].max()
     y_min, y_max = concatenated[:, 1].min(), concatenated[:, 1].max()
 
+    # Plot model samples
     for i, (samples, name) in enumerate(zip(all_data[:-1], model_names)):
         axs[i].scatter(samples[:, 0], samples[:, 1], s=1)
         axs[i].set_title(f'{name} Samples')
         axs[i].set_xlim(x_min, x_max)
         axs[i].set_ylim(y_min, y_max)
 
-    # Ground truth plot
+    # Plot ground truth
     gt = all_data[-1]
     axs[-1].scatter(gt[:, 0], gt[:, 1], s=1)
     axs[-1].set_title('Ground Truth Samples')
@@ -94,7 +93,15 @@ def plot_model_samples(sample_list, model_names, ground_truth, figsize=(20, 5)):
     axs[-1].set_ylim(y_min, y_max)
 
     plt.tight_layout()
-    plt.show()
+
+    if save_path:
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        plt.savefig(save_path, bbox_inches='tight')
+        print(f"Saved plot to: {save_path}")
+        plt.close()
+    else:
+        plt.show()
+
 
 def plot_particle_trajectories(histories, model_names, X1, figsize=(20, 5), step=1, max_particles=25):
     """

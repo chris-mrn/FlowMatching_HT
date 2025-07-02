@@ -41,44 +41,9 @@ class MLP(nn.Module):
         output = self.main(h)
 
         return output.reshape(*sz)
-    
 
-# MLP Tail Param
+
 class MLP_TailParam(nn.Module):
-    def __init__(self, time_dim: int = 1, hidden_dim: int = 128,output_dim: int =8):
-        super().__init__()
-
-        self.time_dim = time_dim
-        self.hidden_dim = hidden_dim
-        self.output_dim= output_dim
-
-        self.main = nn.Sequential(
-            nn.Linear(time_dim, hidden_dim),
-            Swish(),
-            nn.Linear(hidden_dim, hidden_dim),
-            Swish(),
-            nn.Linear(hidden_dim, hidden_dim),
-            Swish(),
-            nn.Linear(hidden_dim, hidden_dim),
-            Swish(),
-            nn.Linear(hidden_dim, output_dim),
-            )
-
-
-    def forward( self,t: Tensor) -> Tensor:
-        # sz = x.size()
-        # x = x.reshape(-1, self.input_dim)
-        # t = t.reshape(-1, self.time_dim).float()
-
-        # t = t.reshape(-1, 1).expand(x.shape[0], 1)
-        # h = torch.cat([x, t], dim=1)
-        # print("YES",t.shape)
-        output = self.main(t.float())
-
-        return output#.reshape(*sz)
-    
-
-class MLP_TailParam2(nn.Module):
     def __init__(self, time_dim: int = 1, hidden_dim: int = 128,output_dim: int =8):
         super().__init__()
 
@@ -111,7 +76,7 @@ class MLP_TailParam2(nn.Module):
         output = self.main(t.float())
 
         return output#.reshape(*sz)
-    
+
 
 
 class MLP2(nn.Module):
@@ -263,7 +228,7 @@ class FullConnectedScoreModel(nn.Module):
             x = F.relu(hidden_layer(x))
 
         return self.output_layer(x)
-    
+
 
 
 class FullConnectedScoreModel_time(nn.Module):
@@ -322,4 +287,3 @@ class MLP_diffusion(nn.Module):
         output = self.main(x)
 
         return output
-    

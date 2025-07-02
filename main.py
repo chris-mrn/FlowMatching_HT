@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 import flow_matching
 
 from models.HT_Flow import HT_FlowMatching_X0
-from net.network import MLP, MLP_TailParam
+from net.net2D import MLP, MLP_TailParam
 from models.utils.extreme_transforms import TTF
 
 
@@ -22,7 +22,6 @@ def main():
     # Parse arguments
 
     args = parse_arguments()
-
     X1 = torch.tensor(np.load("data/ST2.npy"))
     X0 = torch.randn_like(torch.Tensor(X1))
     # Creating dataloader

@@ -1,5 +1,7 @@
 import os
 import subprocess
+import sys
+
 
 # Clone the repository
 subprocess.run(
@@ -8,14 +10,15 @@ subprocess.run(
 )
 os.chdir("FlowMatching_HT")
 
+subprocess.check_call([sys.executable, "-m", "pip", "install", 'flow_matching'])
+
 
 # Define hyperparameters
 
 device = "cuda"
 # Run the training script
 subprocess.run(
-    ["!pip install flow_matching",
-        "python",
+    [   "python",
         "main.py",
         "--device",
         device,

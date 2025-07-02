@@ -14,7 +14,7 @@ os.chdir("FlowMatching_HT")
 device = "cuda"
 # Run the training script
 subprocess.run(
-    [
+    ["!pip install flow_matching",
         "python",
         "main.py",
         "--device",

@@ -41,26 +41,19 @@ class LightTailedModel(nn.Module):
         return(velocity_field)
 
 class HT_FlowMatching_X0:
-    def __init__(self,Tail_paramNet,model,TTF,dimension,iterations,device,steps):
-        self.model=model
-        self.Tail_paramNet=Tail_paramNet
+    def __init__(self, tail_net, flow_net, TTF, dimension, device):
+        self.model = flow_net
+        self.Tail_paramNet = tail_net
         self.TTF=TTF
         self.device=device
         self.path = AffineProbPath(scheduler=CondOTScheduler())
         self.dim=dimension
-        self.iterations = iterations
-        self.flow_model = LightTailedModel(model,dimension,simulation=False).to(device)
-        self.steps=steps
-        self.count=0
-        
-    def train_epoch(self,optim1,optim2,train_loader,noise_loader,curr_iter):
-        loss_scaler = NativeScaler()
-        iI=curr_iter
-        for data, noise in zip(train_loader,noise_loader):
-            self.count=self.count+1
-            if self.count==self.steps:
-                break
+        self.flow_model = LightTailedModel(flow_net,dimension,simulation=False).to(device)
 
+    def train_epoch(self,optim1,optim2,train_loader,noise_loader, epoch):
+        loss_scaler = NativeScaler()
+        iI = epoch
+        for data, noise in zip(train_loader, noise_loader):
 
             optim1.zero_grad()
             optim2.zero_grad()
@@ -75,7 +68,7 @@ class HT_FlowMatching_X0:
             x_0 = self.TTF(x_0,param_tail)
 
 
-            if iI<(3*self.iterations)//4:
+            if iI<(3*self.epochs)//4:
                 t = 1-torch.sqrt(1-torch.rand(x_1.shape[0])).to(self.device) #best
             else:
                 t= -torch.log(1 - torch.rand(x_1.shape[0]) * (1 - torch.exp(torch.tensor(-1)))).to(self.device)
@@ -88,7 +81,7 @@ class HT_FlowMatching_X0:
             velocity_field=self.flow_model(x_t,time_t)
 
             loss = torch.pow( velocity_field - dx_t, 2).mean()
-            print("LOSS-",loss)
+
 
             loss_scaler(
                 loss,
@@ -99,9 +92,10 @@ class HT_FlowMatching_X0:
                 update_grad=True,
                 approach=2
                 )
+        print(f"Loss epoch {epoch}", loss.item())
 
     def train(self, optim1, optim2, train_loader, noise_loader, epochs):
-
+        self.epochs = epochs
         for epoch in range(epochs):
             self.train_epoch(optim1,optim2,train_loader,noise_loader, epoch)
 

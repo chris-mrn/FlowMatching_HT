@@ -23,7 +23,7 @@ def main():
     args = parse_arguments()
 
     X1 = torch.tensor(np.load("data/ST2.npy"))
-    X0 = torch.rand_like(torch.Tensor(X1))
+    X0 = torch.randn_like(torch.Tensor(X1))
     # Creating dataloader
     dataloader1 = torch.utils.data.DataLoader(X1, batch_size=4096, shuffle=True)
     dataloader0 = torch.utils.data.DataLoader(X0, batch_size=4096, shuffle=True)
@@ -39,9 +39,7 @@ def main():
     dim = 2
     hidden_dim = 512
     lr = 1e-4
-    n_iter = 1000
-    steps = 1200
-    epochs = 20
+    epochs = 100
 
     device = 'cpu'
     flow_net = MLP(input_dim=dim, time_dim=1, hidden_dim=hidden_dim).to(device)
@@ -49,9 +47,9 @@ def main():
 
     optim_net = torch.optim.Adam(flow_net.parameters(), lr=lr, weight_decay=1e-3)
     optim_tail = torch.optim.Adam(tail_net.parameters(), lr=lr, weight_decay=1e-3)
-    ttf = TTF(dimz=dim).to(device)  #TTF
+    ttf = TTF(dimz=dim).to(device)
 
-    model_ht_fm = HT_FlowMatching_X0(tail_net, flow_net, ttf, dim, n_iter, device, steps)
+    model_ht_fm = HT_FlowMatching_X0(tail_net, flow_net, ttf, dim, device)
     model_ht_fm.train(optim_net, optim_tail, dataloader1, dataloader0, epochs)
     gen_samples_FMHT = model_ht_fm.generate(X0[0:10000])
 

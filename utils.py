@@ -54,7 +54,7 @@ def show_images(tensor, title=None, nrow=5, save_path=None):
     plt.close()  # Don't display inline if only saving
 
 
-def plot_model_samples(sample_list, model_names, ground_truth, figsize=(20, 5), save_path=None):
+def plot_model_samples(sample_list, model_names, ground_truth, figsize=(20, 5), save_path='outputs/samples.png'):
     """
     Plots samples from different models and the ground truth side by side,
     with shared axis limits for better comparison. Can optionally save the plot.

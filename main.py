@@ -41,7 +41,7 @@ def main():
     lr = 1e-4
     epochs = 100
 
-    device = 'cpu'
+    device = 'cuda'
     flow_net = MLP(input_dim=dim, time_dim=1, hidden_dim=hidden_dim).to(device)
     tail_net = MLP_TailParam(time_dim=1, hidden_dim=hidden_dim//2, output_dim=4*dim).to(device)
 
@@ -52,6 +52,7 @@ def main():
     model_ht_fm = HT_FlowMatching_X0(tail_net, flow_net, ttf, dim, device)
     model_ht_fm.train(optim_net, optim_tail, dataloader1, dataloader0, epochs)
     gen_samples_FMHT = model_ht_fm.generate(X0[0:10000])
+    print(device)
 
     # Plots
     plot_model_samples(

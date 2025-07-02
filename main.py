@@ -39,7 +39,7 @@ def main():
     dim = 2
     hidden_dim = 512
     lr = 1e-4
-    epochs = 100
+    epochs = 1
 
     device = 'cuda'
     flow_net = MLP(input_dim=dim, time_dim=1, hidden_dim=hidden_dim).to(device)

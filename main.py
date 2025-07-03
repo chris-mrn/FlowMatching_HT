@@ -22,7 +22,7 @@ def main():
     # Parse arguments
 
     args = parse_arguments()
-    X1 = torch.tensor(np.load("data/ST2.npy"))[:100000]
+    X1 = torch.tensor(np.load("data/ST2.npy"))
     X0 = torch.randn_like(torch.Tensor(X1))
 
     # Creating dataloader

@@ -22,7 +22,10 @@ def main():
     # Parse arguments
 
     args = parse_arguments()
-    X1 = torch.tensor(np.load("data/ST2.npy"))
+    data = torch.tensor(np.load("data/ST2.npy"))
+
+    indices = torch.randperm(data.size(0))  # Get random indices
+    X1 = data[indices][:100000]  # Apply the random permutation
     X0 = torch.randn_like(torch.Tensor(X1))
 
     # Creating dataloader

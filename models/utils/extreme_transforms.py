@@ -1,10 +1,6 @@
 import torch
 import torch.nn as nn
 from torch.nn.functional import softplus, relu, sigmoid
-# from nflows.transforms.autoregressive import AutoregressiveTransform
-# from nflows.transforms import made as made_module
-# from nflows.transforms import Transform
-# from tailnflows.models.utils import inv_sftplus, inv_sigmoid
 from typing import TypedDict, Optional, Callable
 from math import sqrt
 import numpy as np
@@ -12,7 +8,6 @@ import numpy as np
 
 def inv_sftplus(x):
     return x + torch.log(-torch.expm1(-x))
-
 
 def inv_sigmoid(x):
     return torch.log(x) - torch.log(1 - x)
@@ -89,61 +84,6 @@ def _extreme_inverse_and_lad(x, tail_param):
     lad += torch.log(torch.tensor(SQRT_PI / SQRT_2))
 
     return z, lad
-
-
-def neg_extreme_transform_and_lad(z, tail_param):
-    def _small_erfcinv(log_z):
-        inner = torch.log(torch.tensor(2 / torch.pi)) - 2 * log_z
-        inner -= (torch.log(torch.tensor(2 / torch.pi)) - 2 * log_z).log()
-        return inner.pow(0.5) / SQRT_2
-
-    erfc_val = torch.erfc(z / SQRT_2)
-    g = erfc_val.pow(-tail_param)
-
-    stable_g = g > MIN_ERFC_INV
-
-    erfcinv_val = torch.zeros_like(z)
-    erfcinv_val[stable_g] = _erfcinv(g[stable_g])
-
-    log_z = -torch.log(z[~stable_g])
-    log_z += -z[~stable_g].square() / 2
-    log_z += torch.log(torch.tensor(SQRT_2 / SQRT_PI))
-    log_z *= -tail_param[~stable_g]
-
-    erfcinv_val[~stable_g] = _small_erfcinv(log_z)
-
-    x = -erfcinv_val * 2 / (SQRT_PI * tail_param)
-
-    lad = torch.square(erfcinv_val) - 0.5 * torch.square(z)
-    lad += torch.log(torch.tensor(SQRT_2 / SQRT_PI))
-    lad += (-1 - tail_param) * torch.log(erfc_val)
-
-    return x, lad
-
-
-def _tail_switch_transform(z, pos_tail, neg_tail, shift, scale):
-    sign = torch.sign(z)
-    tail_param = torch.where(z > 0, pos_tail, neg_tail)
-    heavy_tail = tail_param > 0
-    heavy_x, heavy_lad = _extreme_transform_and_lad(
-        torch.abs(z[heavy_tail]), tail_param[heavy_tail]
-    )
-    light_x, light_lad = neg_extreme_transform_and_lad(
-        torch.abs(z[~heavy_tail]), tail_param[~heavy_tail]
-    )
-
-    lad = torch.zeros_like(z)
-    x = torch.zeros_like(z)
-
-    x[heavy_tail] = heavy_x
-    x[~heavy_tail] = light_x
-
-    lad[heavy_tail] = heavy_lad
-    lad[~heavy_tail] = light_lad
-
-    lad += torch.log(scale)
-    return sign * x * scale + shift, lad
-
 
 def _tail_affine_transform(z, pos_tail, neg_tail, shift, scale):
     sign = torch.sign(z)
@@ -242,103 +182,6 @@ def _tail_affine_inverse(x, pos_tail, neg_tail, shift, scale):
 
     lad -= torch.log(scale)
     return sign * z, lad
-
-
-def _tail_forward(z, pos_tail, neg_tail):
-    sign = torch.sign(z)
-    tail_param = torch.where(z > 0, pos_tail, neg_tail)
-    x, lad = _extreme_transform_and_lad(torch.abs(z), tail_param)
-    return sign * x, lad.sum(axis=1)
-
-
-def _tail_inverse(x, pos_tail, neg_tail):
-    sign = torch.sign(x)
-    tail_param = torch.where(x > 0, pos_tail, neg_tail)
-    z, lad = _extreme_inverse_and_lad(torch.abs(x), torch.abs(tail_param))
-    return sign * z, lad.sum(axis=1)
-
-
-def two_scale_affine_forward(z, shift, scale_neg, scale_pos, bound=torch.tensor(1.0)):
-    # build batch x dim x knots arrays
-    derivatives = torch.ones([*z.shape, 3])
-    derivatives[:, :, 0] = scale_neg
-    derivatives[:, :, -1] = scale_pos
-
-    input_knots = torch.zeros([*z.shape, 3])
-    input_knots[:, :, 0] = -bound
-    input_knots[:, :, -1] = bound
-
-    output_knots = torch.zeros([*z.shape, 3])
-    output_knots[:, :, 0] = -bound
-    output_knots[:, :, -1] = bound
-
-    neg_region = z < -bound
-    pos_region = z > bound
-    body = ~torch.logical_or(neg_region, pos_region)
-    neg_scale_ix = (neg_region * torch.arange(z.shape[-1]))[neg_region]
-    pos_scale_ix = (pos_region * torch.arange(z.shape[-1]))[pos_region]
-
-    x = torch.empty_like(z)
-    lad = torch.empty_like(z)
-
-    x[neg_region] = (z[neg_region] + bound) * scale_neg[neg_scale_ix] - bound
-    x[pos_region] = (z[pos_region] - bound) * scale_pos[pos_scale_ix] + bound
-    lad[neg_region] = -torch.log(scale_neg[neg_scale_ix])
-    lad[pos_region] = -torch.log(scale_pos[pos_scale_ix])
-
-    body_x, body_lad = forward_rqs(
-        z[body], input_knots[body], output_knots[body], derivatives[body]
-    )
-    x[body] = body_x
-    # this has already been inverted, so undo for subsequent inversion
-    lad[body] = -body_lad
-
-    x += shift
-
-    return x, lad
-
-
-def two_scale_affine_inverse(x, shift, scale_neg, scale_pos, bound=torch.tensor(1.0)):
-    # build batch x dim x knots arrays
-    derivatives = torch.ones([*x.shape, 3])
-    derivatives[:, :, 0] = scale_neg
-    derivatives[:, :, -1] = scale_pos
-
-    input_knots = torch.zeros([*x.shape, 3])
-    input_knots[:, :, 0] = -bound
-    input_knots[:, :, -1] = bound
-
-    output_knots = torch.zeros([*x.shape, 3])
-    output_knots[:, :, 0] = -bound
-    output_knots[:, :, -1] = bound
-
-    # undo shift
-    x -= shift
-
-    # regions and place holders
-    neg_region = x < -bound
-    pos_region = x > bound
-    body = ~torch.logical_or(neg_region, pos_region)
-    neg_scale_ix = (neg_region * torch.arange(x.shape[-1]))[neg_region]
-    pos_scale_ix = (pos_region * torch.arange(x.shape[-1]))[pos_region]
-
-    z = torch.empty_like(x)
-    lad = torch.empty_like(x)
-
-    # scales
-    z[neg_region] = (x[neg_region] + bound) / scale_neg[neg_scale_ix] - bound
-    z[pos_region] = (x[pos_region] - bound) / scale_pos[pos_scale_ix] + bound
-    lad[neg_region] = torch.log(scale_neg[neg_scale_ix])
-    lad[pos_region] = torch.log(scale_pos[pos_scale_ix])
-
-    # body
-    body_z, body_lad = inverse_rqs(
-        x[body], input_knots[body], output_knots[body], derivatives[body]
-    )
-    z[body] = body_z
-    lad[body] = body_lad
-
-    return z, lad
 
 def grad_R(z,  lambda_p, lambda_n,mu, sigma):
     s = torch.sign(z)
@@ -473,6 +316,7 @@ class TTF(nn.Module):
                 x, self.pos_tail(_unc_pos_tail), self.neg_tail(_unc_neg_tail), shift, self.scale(_unc_scale)
                 )
         return z
+
     def dTTF_dtailparam(self,z,tail_param): #outputs 4 derovatove each of B X 2 aditya
         dim=self.dimz
         dummy_tail_param=tail_param.reshape(tail_param.shape[0],self.og_tail_shape[0],self.og_tail_shape[1])

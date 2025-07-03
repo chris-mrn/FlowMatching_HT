@@ -1,6 +1,5 @@
 import numpy as np
 import torch
-# from marginalTailAdaptiveFlow.utils.flows import experiment
 import flow_matching
 from flow_matching.path.scheduler import CondOTScheduler
 from flow_matching.path import AffineProbPath

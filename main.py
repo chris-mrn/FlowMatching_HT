@@ -22,26 +22,30 @@ def main():
     # Parse arguments
 
     args = parse_arguments()
-    X1 = torch.tensor(np.load("data/ST2.npy"))
+    X1 = torch.tensor(np.load("data/ST2.npy"))[:100000]
     X0 = torch.randn_like(torch.Tensor(X1))
+
     # Creating dataloader
     dataloader1 = torch.utils.data.DataLoader(X1, batch_size=4096, shuffle=True)
     dataloader0 = torch.utils.data.DataLoader(X0, batch_size=4096, shuffle=True)
 
+    device = 'cuda'
 
-    #net_fm = FMnet()
-    #model_FM = GaussFlowMatching_OT(net_fm, device=args.device)
-    #optimizer_fm = torch.optim.Adam(net_fm.parameters(), 5e-4)
-
-    #model_FM.train(optimizer_fm, dataloader1 , dataloader0 , n_epochs=120)
-    #gen_FM_samples, hist_FM = model_FM.sample_from(X0[:4000])
-
+    # Setting the parameters of the model
     dim = 2
     hidden_dim = 512
     lr = 1e-4
-    epochs = 1
+    epochs = 150
 
-    device = 'cuda'
+
+    net_fm = FMnet()
+    model_FM = GaussFlowMatching_OT(net_fm, device=args.device)
+    optimizer_fm = torch.optim.Adam(net_fm.parameters(), lr)
+
+    model_FM.train(optimizer_fm, dataloader1 , dataloader0 , n_epochs=epochs)
+    gen_FM_samples, hist_FM = model_FM.sample_from(X0.to(device))
+
+
     flow_net = MLP(input_dim=dim, time_dim=1, hidden_dim=hidden_dim).to(device)
     tail_net = MLP_TailParam(time_dim=1, hidden_dim=hidden_dim//2, output_dim=4*dim).to(device)
 
@@ -51,13 +55,12 @@ def main():
 
     model_ht_fm = HT_FlowMatching_X0(tail_net, flow_net, ttf, dim, device)
     model_ht_fm.train(optim_net, optim_tail, dataloader1, dataloader0, epochs)
-    gen_samples_FMHT = model_ht_fm.generate(X0[0:10000].to(device))
-    print(device)
+    gen_samples_FMHT = model_ht_fm.sample_from(X0.to(device))
 
     # Plots
     plot_model_samples(
-        [gen_samples_FMHT],
-        ['FM_HT'],
+        [gen_samples_FMHT, gen_FM_samples],
+        ['FM_HT', 'FM'],
         X1)
 
 

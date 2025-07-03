@@ -103,7 +103,7 @@ class HT_FlowMatching_X0:
         return self.flow_model(x_t, t)
 
 
-    def generate(self, X0):
+    def sample_from(self, X0):
         # step size for ode solver
         self.flow_model.sim=True
         wrapped_vf = WrappedModel(self.flow_model)

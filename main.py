@@ -25,7 +25,7 @@ def main():
     data = torch.tensor(np.load("data/ST2.npy"))
 
     indices = torch.randperm(data.size(0))  # Get random indices
-    X1 = data[indices][:20000]  # Apply the random permutation
+    X1 = data[indices][:200]  # Apply the random permutation
     X0 = torch.randn_like(torch.Tensor(X1))
 
     # Creating dataloader
@@ -42,7 +42,7 @@ def main():
 
 
     net_fm = FMnet()
-    model_FM = GaussFlowMatching_OT(net_fm, device=args.device)
+    model_FM = GaussFlowMatching_OT(net_fm, device=device)
     optimizer_fm = torch.optim.Adam(net_fm.parameters(), lr)
 
     model_FM.train(optimizer_fm, dataloader1 , dataloader0 , n_epochs=epochs)

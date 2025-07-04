@@ -33,7 +33,7 @@ def main():
     dataloader1 = torch.utils.data.DataLoader(X1, batch_size=2048, shuffle=True)
     dataloader0 = torch.utils.data.DataLoader(X0, batch_size=2048, shuffle=True)
 
-    device = 'mps'
+    device = 'cuda'
 
     # Setting the parameters of the model
     dim = 2

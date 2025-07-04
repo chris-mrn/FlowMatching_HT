@@ -40,7 +40,7 @@ def main():
     lr = 1e-4
     epochs = 100
 
-    """"""""""""""""
+
     net_fm = FMnet().to(device)
     model_FM = GaussFlowMatching_OT(net_fm, device=device)
     optimizer_fm = torch.optim.Adam(net_fm.parameters(), lr)
@@ -48,6 +48,7 @@ def main():
     model_FM.train(optimizer_fm, dataloader1 , dataloader0 , n_epochs=1)
     gen_FM_samples, hist_FM = model_FM.sample_from(X0.to(device))
 
+    """"""""""""""""
     net = FMnet().to(device)
     ttf = basicTTF(dim=dim).to(device)
 
@@ -71,8 +72,8 @@ def main():
 
     # Plots
     plot_model_samples(
-        [ gen_samples_FM_HT],
-        [ 'FM_HT'],
+        [ gen_samples_FM_HT, gen_FM_samples],
+        [ 'FM_HT', 'FM'],
         X1)
 
 

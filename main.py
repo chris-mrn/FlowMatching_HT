@@ -33,7 +33,7 @@ def main():
     dataloader1 = torch.utils.data.DataLoader(X1, batch_size=2048, shuffle=True)
     dataloader0 = torch.utils.data.DataLoader(X0, batch_size=2048, shuffle=True)
 
-    device = 'cuda'
+    device = 'mps'
 
     # Setting the parameters of the model
     dim = 2
@@ -41,14 +41,14 @@ def main():
     epochs = 50
 
 
-    net_fm = FMnet()
+    net_fm = FMnet().to(device)
     model_FM = GaussFlowMatching_OT(net_fm, device=device)
     optimizer_fm = torch.optim.Adam(net_fm.parameters(), lr)
 
     model_FM.train(optimizer_fm, dataloader1 , dataloader0 , n_epochs=epochs)
     gen_FM_samples, hist_FM = model_FM.sample_from(X0.to(device))
 
-    net = FMnet()
+    net = FMnet().to(device)
     ttf = basicTTF(dim=dim).to(device)
 
     optimizer = torch.optim.Adam(list(net.parameters()) + list(ttf.parameters()),

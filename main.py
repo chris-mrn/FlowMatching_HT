@@ -25,12 +25,12 @@ def main():
     data = torch.tensor(np.load("data/ST2.npy"))
 
     indices = torch.randperm(data.size(0))  # Get random indices
-    X1 = data[indices][:200]  # Apply the random permutation
+    X1 = data[indices][:100000]  # Apply the random permutation
     X0 = torch.randn_like(torch.Tensor(X1))
 
     # Creating dataloader
-    dataloader1 = torch.utils.data.DataLoader(X1, batch_size=2, shuffle=True)
-    dataloader0 = torch.utils.data.DataLoader(X0, batch_size=2, shuffle=True)
+    dataloader1 = torch.utils.data.DataLoader(X1, batch_size=2048, shuffle=True)
+    dataloader0 = torch.utils.data.DataLoader(X0, batch_size=2048, shuffle=True)
 
     device = 'cuda'
 

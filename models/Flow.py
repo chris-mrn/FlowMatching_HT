@@ -1,4 +1,5 @@
 import torch
+from .utils import NativeScalerWithGradNormCount as NativeScaler
 
 
 class GaussFlowMatching_OT:
@@ -10,6 +11,7 @@ class GaussFlowMatching_OT:
 
     def train(self, optimizer, X1_loader, X0_loader, n_epochs=10):
         print("Training flow matching...")
+        loss_scaler = NativeScaler()
 
         for epoch in range(n_epochs):
             for x1, x0 in zip(X1_loader, X0_loader):
@@ -24,8 +26,13 @@ class GaussFlowMatching_OT:
 
                 optimizer.zero_grad()
                 loss = self.loss_fn(self.flow(x_t, t), dx_t)
-                loss.backward()
-                optimizer.step()
+
+                loss_scaler(
+                    loss,
+                    optimizer,
+                    parameters=self.net.parameters(),
+                    update_grad=True,
+                    )
 
             print(f"Epoch {epoch+1}/{n_epochs} - Loss: {loss.item():.6f}")
 

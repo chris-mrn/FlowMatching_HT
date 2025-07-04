@@ -38,13 +38,10 @@ class NativeScalerWithGradNormCount:
         self,
         loss,
         optimizer,
-        optimizer2,
         clip_grad=100,
         parameters=None,
-        parameters2=None,
         create_graph=False,
         update_grad=True,
-        approach=2
     ):
         self._scaler.scale(loss).backward(create_graph=create_graph)
         if update_grad:
@@ -53,35 +50,15 @@ class NativeScalerWithGradNormCount:
                 self._scaler.unscale_(
                     optimizer
                 )  # unscale the gradients of optimizer's assigned params in-place
-                if approach==2:
-                    self._scaler.unscale_(
-                        optimizer2
-                    )  # unscale the gradients of optimizer's assigned params in-place
-                    norm2=torch.nn.utils.clip_grad_norm_(parameters2, clip_grad)
 
-
-
-                # norm = torch.nn.utils.clip_grad_norm_(parameters, clip_grad)
                 norm=get_grad_norm_(parameters)
-                # print("NORM-",norm.mean(),norm2.mean())
+
             else:
                 self._scaler.unscale_(optimizer)
 
                 norm = get_grad_norm_(parameters)
-                if approach==2:
-                    self._scaler.unscale_(
-                        optimizer2
-                    )  # unscale the gradients of optimizer's assigned params in-place
-                    norm2=get_grad_norm_(parameters2)
-
-                # print("NORM-",norm.mean(),norm2.mean())
-
-
 
             self._scaler.step(optimizer)
-            if approach==2:
-                self._scaler.step(optimizer2)
-
 
             self._scaler.update()
         else:

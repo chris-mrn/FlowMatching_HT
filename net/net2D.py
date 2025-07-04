@@ -23,10 +23,6 @@ class MLP2D(nn.Module):
         x = torch.cat([self.linpos(x), self.pe(sigma)], dim=1)
         return self.mlp(x)
 
-
-
-
-
 class PE(nn.Module):
     """
     Positional encoding.

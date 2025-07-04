@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 import flow_matching
 from models.Flow_X0HT import FlowMatchingX0HT
 from TTF.basic import basicTTF
+from net.net2D import HeavyT_MLP
 
 #from models.utils.extreme_transforms import TTF
 
@@ -37,7 +38,7 @@ def main():
     # Setting the parameters of the model
     dim = 2
     lr = 1e-4
-    epochs = 150
+    epochs = 50
 
 
     net_fm = FMnet()
@@ -54,15 +55,24 @@ def main():
                                  lr=lr,
                                  weight_decay=1e-3)
 
-    model_ht_fm = FlowMatchingX0HT(net, ttf, dim, device)
-    model_ht_fm.train(optimizer, dataloader1, dataloader0, epochs)
-    gen_samples_FMHT, hist = model_ht_fm.sample_from(X0.to(device))
+    model_FMX0_HT = FlowMatchingX0HT(net, ttf, dim, device)
+    model_FMX0_HT.train(optimizer, dataloader1, dataloader0, epochs)
+    gen_samples_X0, hist = model_FMX0_HT.sample_from(X0.to(device))
+
+    net_HT = HeavyT_MLP().to(device)
+    model_FM_HT = GaussFlowMatching_OT(net_HT, device=device)
+    optimizer_fm = torch.optim.Adam(net_fm.parameters(), lr)
+
+    model_FM.train(optimizer_fm, dataloader1 , dataloader0 , n_epochs=epochs)
+    gen_FM_samples, hist_FM = model_FM.sample_from(X0.to(device))
+
+    gen_samples_FMHT, hist_FMHT = model_FM_HT.sample_from(X0.to(device))
 
 
     # Plots
     plot_model_samples(
-        [gen_samples_FMHT, gen_FM_samples],
-        ['FM_HT', 'FM'],
+        [gen_FM_samples, gen_samples_X0, gen_samples_FMHT],
+        ['FM', 'FM_X0', 'FM_HT'],
         X1)
 
 

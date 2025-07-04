@@ -13,8 +13,6 @@ import matplotlib.pyplot as plt
 import flow_matching
 from models.NewX0Heavy import FlowMatchingHTX0, TTF
 
-from models.HT_Flow import HT_FlowMatching_X0
-from net.net2D import MLP, MLP_TailParam
 #from models.utils.extreme_transforms import TTF
 
 
@@ -33,7 +31,7 @@ def main():
     dataloader1 = torch.utils.data.DataLoader(X1, batch_size=2, shuffle=True)
     dataloader0 = torch.utils.data.DataLoader(X0, batch_size=2, shuffle=True)
 
-    device = 'cpu'
+    device = 'cuda'
 
     # Setting the parameters of the model
     dim = 2

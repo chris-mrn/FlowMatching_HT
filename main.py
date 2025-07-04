@@ -38,9 +38,9 @@ def main():
     # Setting the parameters of the model
     dim = 2
     lr = 1e-4
-    epochs = 250
+    epochs = 150
 
-
+    """""""""
     net_fm = FMnet().to(device)
     model_FM = GaussFlowMatching_OT(net_fm, device=device)
     optimizer_fm = torch.optim.Adam(net_fm.parameters(), lr)
@@ -59,6 +59,7 @@ def main():
     model_FMX0_HT = FlowMatchingX0HT(net, ttf, dim, device)
     model_FMX0_HT.train(optimizer, dataloader1, dataloader0, epochs)
     gen_samples_X0, hist = model_FMX0_HT.sample_from(X0.to(device))
+    """""""""
 
     net_HT = HeavyT_MLP().to(device)
     model_FM_HT = GaussFlowMatching_OT(net_HT, device=device)
@@ -71,8 +72,8 @@ def main():
 
     # Plots
     plot_model_samples(
-        [ gen_FM_samples, gen_samples_X0, gen_samples_FM_HT],
-        [ 'FM', 'FM_HT_X0', 'FM_HT'],
+        [ gen_samples_FM_HT],
+        [ 'FM_HT'],
         X1)
 
 

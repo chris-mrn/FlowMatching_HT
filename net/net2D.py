@@ -2,6 +2,22 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 from TTF.basic import basicTTF
+from .utils import PE, Swish
+
+class FMnet(nn.Module):
+    def __init__(self, dim: int = 2, h: int = 64):
+        super().__init__()
+        self.net = nn.Sequential(
+                nn.Linear(dim + 1, h),
+                nn.ELU(),
+                nn.Linear(h, h),
+                nn.ELU(),
+                nn.Linear(h, h),
+                nn.ELU(),
+                nn.Linear(h, dim))
+
+    def forward(self, x_t: Tensor, t: Tensor) -> Tensor:
+        return self.net(torch.cat((t, x_t), -1))
 
 class MLP2D(nn.Module):
     """
@@ -23,47 +39,6 @@ class MLP2D(nn.Module):
         x = torch.cat([self.linpos(x), self.pe(sigma)], dim=1)
         return self.mlp(x)
 
-class PE(nn.Module):
-    """
-    Positional encoding.
-    """
-    def __init__(self, num_pos_feats=64, temperature=10000):
-        super().__init__()
-        dim_t = torch.arange(num_pos_feats)
-        self.register_buffer("dim_t",
-                             temperature ** (2 * (dim_t // 2) / num_pos_feats))
-
-    def forward(self, x):
-        pos_x = x[:, :, None] / self.dim_t
-        pos = torch.stack([pos_x[:, :, 0::2].sin(),
-                           pos_x[:, :, 1::2].cos()],
-                          dim=3).flatten(1)
-        return pos
-
-
-class FMnet(nn.Module):
-    def __init__(self, dim: int = 2, h: int = 64):
-        super().__init__()
-        self.net = nn.Sequential(
-                nn.Linear(dim + 1, h),
-                nn.ELU(),
-                nn.Linear(h, h),
-                nn.ELU(),
-                nn.Linear(h, h),
-                nn.ELU(),
-                nn.Linear(h, dim))
-
-    def forward(self, x_t: Tensor, t: Tensor) -> Tensor:
-        return self.net(torch.cat((t, x_t), -1))
-
-
-class Swish(nn.Module):
-    def __init__(self):
-        super().__init__()
-
-    def forward(self, x: Tensor) -> Tensor:
-        return torch.sigmoid(x) * x
-
 
 class HeavyT_MLP(nn.Module):
     def __init__(self, input_dim: int = 2, time_dim: int = 1, hidden_dim: int = 128):
@@ -72,9 +47,11 @@ class HeavyT_MLP(nn.Module):
         self.input_dim = input_dim
         self.time_dim = time_dim
         self.hidden_dim = hidden_dim
+        self.linpos = nn.Linear(2, 64)
+        self.pe = PE(num_pos_feats=64)
 
         self.main = nn.Sequential(
-            nn.Linear(input_dim+time_dim, hidden_dim),
+            nn.Linear(2*64, hidden_dim),
             Swish(),
             nn.Linear(hidden_dim, hidden_dim),
             Swish(),
@@ -86,14 +63,15 @@ class HeavyT_MLP(nn.Module):
             basicTTF(dim=input_dim)
             )
 
-
     def forward(self, x: Tensor, t: Tensor) -> Tensor:
         sz = x.size()
         x = x.reshape(-1, self.input_dim)
         t = t.reshape(-1, self.time_dim).float()
 
         t = t.reshape(-1, 1).expand(x.shape[0], 1)
-        h = torch.cat([x, t], dim=1)
+        h = torch.cat([self.linpos(x), self.pe(t)], dim=1)
+        # h = torch.cat([x, t], dim=1)
+
         output = self.main(h)
 
         return output.reshape(*sz)

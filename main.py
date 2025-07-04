@@ -38,7 +38,7 @@ def main():
     # Setting the parameters of the model
     dim = 2
     lr = 1e-4
-    epochs = 150
+    epochs = 1000
 
     """""""""
     net_fm = FMnet().to(device)

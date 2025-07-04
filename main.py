@@ -45,7 +45,7 @@ def main():
     model_FM = GaussFlowMatching_OT(net_fm, device=device)
     optimizer_fm = torch.optim.Adam(net_fm.parameters(), lr)
 
-    model_FM.train(optimizer_fm, dataloader1 , dataloader0 , n_epochs=1)
+    model_FM.train(optimizer_fm, dataloader1 , dataloader0 , n_epochs=epochs)
     gen_FM_samples, hist_FM = model_FM.sample_from(X0.to(device))
 
     """"""""""""""""

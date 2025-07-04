@@ -11,7 +11,8 @@ import numpy as np
 from utils import plot_model_samples
 import matplotlib.pyplot as plt
 import flow_matching
-from models.NewX0Heavy import FlowMatchingHTX0, TTF
+from models.Flow_X0HT import FlowMatchingX0HT
+from TTF.basic import basicTTF
 
 #from models.utils.extreme_transforms import TTF
 
@@ -24,7 +25,7 @@ def main():
     data = torch.tensor(np.load("data/ST2.npy"))
 
     indices = torch.randperm(data.size(0))  # Get random indices
-    X1 = data[indices][:100000]  # Apply the random permutation
+    X1 = data[indices][:20000]  # Apply the random permutation
     X0 = torch.randn_like(torch.Tensor(X1))
 
     # Creating dataloader
@@ -37,7 +38,7 @@ def main():
     dim = 2
     hidden_dim = 512
     lr = 1e-4
-    epochs = 150
+    epochs = 120
 
 
     net_fm = FMnet()
@@ -48,13 +49,13 @@ def main():
     gen_FM_samples, hist_FM = model_FM.sample_from(X0.to(device))
 
     net = FMnet()
-    ttf = TTF(dim=dim).to(device)
+    ttf = basicTTF(dim=dim).to(device)
 
     optimizer = torch.optim.Adam(list(net.parameters()) + list(ttf.parameters()),
                                  lr=lr,
                                  weight_decay=1e-3)
 
-    model_ht_fm = FlowMatchingHTX0(net, ttf, dim, device)
+    model_ht_fm = FlowMatchingX0HT(net, ttf, dim, device)
     model_ht_fm.train(optimizer, dataloader1, dataloader0, epochs)
     gen_samples_FMHT, hist = model_ht_fm.sample_from(X0.to(device))
 

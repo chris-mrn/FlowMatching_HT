@@ -3,10 +3,9 @@ import torch
 import flow_matching
 from flow_matching.path.scheduler import CondOTScheduler
 from flow_matching.path import AffineProbPath
-from flow_matching.solver import Solver, ODESolver
+from flow_matching.solver import ODESolver
 from flow_matching.utils import ModelWrapper
-from .utils.scaler_grad import NativeScalerWithGradNormCount as NativeScaler
-from matplotlib import cm
+from .utils import NativeScalerWithGradNormCount as NativeScaler
 import torch.nn as nn
 
 class WrappedModel(ModelWrapper):

@@ -3,32 +3,7 @@ import torch.nn as nn
 import numpy as np
 
 
-class TTF(nn.Module):
-    def __init__(self, dim=2):
-        super().__init__()
-        self.lambd_plus = torch.nn.Parameter(torch.randn((dim)))
-        self.lambd_neg = torch.nn.Parameter(torch.randn((dim)))
-        self.mu = torch.nn.Parameter(torch.randn((dim)))
-        self.sigma = torch.nn.Parameter(torch.randn((dim)))
-
-    def softplus(self, x):
-        return torch.log(1 + torch.exp(x))
-
-    def forward(self, z):
-        lambd_plus = self.softplus(self.lambd_plus)
-        lambd_neg = self.softplus(self.lambd_neg)
-        sigma = 1e-3 + self.softplus(self.sigma)
-
-        sign = torch.sign(z)
-        lambd_s = torch.where(z > 0, lambd_plus, lambd_neg)
-        g = torch.erfc(torch.abs(z) / np.sqrt(2)) + 1e-6 # handle zero power negative in next line
-        x = (torch.pow(g, - lambd_s) - 1) / lambd_s
-        x =  sign * x * sigma + self.mu
-
-        return x
-
-
-class FlowMatchingHTX0:
+class FlowMatchingX0HT:
     def __init__(self, net, TTF, L=10, device='cpu'):
         self.net = net.to(device)
         self.TTF = TTF
@@ -37,7 +12,7 @@ class FlowMatchingHTX0:
         self.loss_fn = torch.nn.MSELoss()
 
     def train(self, optim, X1_loader, X0_loader, n_epochs=10):
-        print("Training flow matching...")
+        print("Training flow matching X0...")
 
         for epoch in range(n_epochs):
             for x1, x0 in zip(X1_loader, X0_loader):
@@ -76,6 +51,7 @@ class FlowMatchingHTX0:
     def sample_from(self, X0, n_steps=10):
         time_steps = torch.linspace(0, 1.0, n_steps + 1, device=self.device)
         x = X0.to(self.device)
+        x = self.TTF(x)
         hist = torch.zeros(n_steps + 1, *X0.shape, device=self.device)
         hist[0] = x
 

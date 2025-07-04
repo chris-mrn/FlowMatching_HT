@@ -71,7 +71,7 @@ def plot_model_samples(sample_list, model_names, ground_truth, figsize=(20, 5), 
 
     # Convert all tensors to numpy
     all_samples = sample_list + [ground_truth]
-    all_data = [s.detach().cpu().numpy() if isinstance(s, torch.Tensor) else s for s in all_samples]
+    all_data = [s.detach().numpy() if isinstance(s, torch.Tensor) else s for s in all_samples]
     concatenated = np.concatenate(all_data, axis=0)
 
     # Compute axis limits

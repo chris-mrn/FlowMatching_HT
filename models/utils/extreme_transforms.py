@@ -61,14 +61,10 @@ def _stable_erfcinv(x, log_x):
 
 
 def _extreme_transform_and_lad(z, tail_param):
-    g = torch.erfc(z / SQRT_2)+0.000001 #Aditya has added the extra 0.000..1 to handle zero power negative in the next line
+
+    g = torch.erfc(z / SQRT_2) + 0.000001 #Aditya has added the extra 0.000..1 to handle zero power negative in the next line
     x = (torch.pow(g, -tail_param) - 1) / tail_param
-
-    lad = torch.log(g) * (-tail_param - 1)
-    lad -= 0.5 * torch.square(z)
-    lad += torch.log(torch.tensor(SQRT_2 / SQRT_PI))
-
-    return x, lad
+    return x
 
 
 def _extreme_inverse_and_lad(x, tail_param):
@@ -85,12 +81,19 @@ def _extreme_inverse_and_lad(x, tail_param):
 
     return z, lad
 
-def _tail_affine_transform(z, pos_tail, neg_tail, shift, scale):
+
+def _tail_affine_transform(z, lambd_plus, lambd_neg, mu, sigma):
+
+    lambd_plus = softplus(lambd_plus)
+    lmabd_neg = softplus(lambd_neg)
+    sigma = 1e-3 + softplus(sigma)
+
     sign = torch.sign(z)
-    tail_param = torch.where(z > 0, pos_tail, neg_tail)
-    x, lad = _extreme_transform_and_lad(torch.abs(z), tail_param)
-    lad += torch.log(scale)
-    return sign * x * scale + shift, lad
+    tail_param = torch.where(z > 0, lambd_plus, lmabd_neg)
+    g = torch.erfc(torch.abs(z) / SQRT_2) + 0.000001 #Aditya has added the extra 0.000..1 to handle zero power negative in the next line
+    x = (torch.pow(g, -tail_param) - 1) / tail_param
+    return sign * x * sigma + mu
+
 
 def dTTF_dz(z, pos_tail, neg_tail,shift,scale): #aditya wrote this
     sqrt_2 = SQRT_2
@@ -248,95 +251,20 @@ def flip(transform):
 
 class TTF(nn.Module):
     def __init__(
-        self, device='cuda:0',dimz=20
+        self, device='cuda:0', dim=20
     ):
         # self.features = features
         super(TTF, self).__init__()
-        self.dimz=dimz
-        self.tail_param_perdim=4
-        self.og_tail_shape=(self.tail_param_perdim,self.dimz)
+        self.lambd_plus = torch.nn.Parameter(torch.randn(()))
+        self.lambd_neg = torch.nn.Parameter(torch.randn(()))
+        self.mu = torch.nn.Parameter(torch.randn(()))
+        self.sigma = torch.nn.Parameter(torch.randn(()))
 
-    def pos_tail(self,x):
-        return softplus(x)
+    def forward(self, z):
+        sign = torch.sign(z)
+        tail_param = torch.where(z > 0, self.lambd_plus, self.lmabd_neg)
+        g = torch.erfc(torch.abs(z) / SQRT_2) + 1e-6 # handle zero power negative in next line
+        x = (torch.pow(g, -tail_param) - 1) / tail_param
+        x =  sign * x * self.sigma + self.mu
 
-    def neg_tail(self,x):
-        return softplus(x)
-
-
-    def scale(self,x):
-        return 1e-3 + softplus(x)
-
-    def forward(self, z,tail_param,fix_tail=False,fix_tail_param_pos=None,fix_tail_param_neg=None):
-        # print("ZZZ",z.shape)
-        # z=z.reshape(-1,2)
-        # print("hello",tail_param.shape)
-        dim=self.dimz
-        dummy_tail_param=tail_param.reshape(tail_param.shape[0],self.og_tail_shape[0],self.og_tail_shape[1])
-
-        # print("dummy_extreme",dummy_tail_param.shape,z.shape)
-
-        _unc_pos_tail,_unc_neg_tail,shift,_unc_scale =dummy_tail_param[:,0,:],dummy_tail_param[:,1,:],dummy_tail_param[:,2,:],dummy_tail_param[:,3,:]
-        """light -> heavy"""
-        if fix_tail==True:
-            # print("hello11",z.shape,fix_tail_param_pos.shape,_unc_pos_tail.shape)
-            fix_tail_param_pos=fix_tail_param_pos.reshape(_unc_pos_tail.shape)
-            fix_tail_param_neg=fix_tail_param_neg.reshape(_unc_neg_tail.shape)
-
-            x, lad = _tail_affine_transform(
-                z, fix_tail_param_pos, fix_tail_param_neg, shift, self.scale(_unc_scale)
-                )
-        else:
-            x, lad = _tail_affine_transform(
-                z, self.pos_tail(_unc_pos_tail), self.neg_tail(_unc_neg_tail), shift, self.scale(_unc_scale)
-            )
         return x
-
-
-    def inverse(self, x,tail_param, fix_tail=False,fix_tail_param_pos=None,fix_tail_param_neg=None):
-        """heavy -> light"""
-        dim=self.dimz
-        # x=x.reshape(-1,2)
-        nan7=torch.isnan(tail_param).any()
-        if nan7:
-            print("tail has nan")
-        dim=self.dimz
-        dummy_tail_param=tail_param.reshape(tail_param.shape[0],self.og_tail_shape[0],self.og_tail_shape[1])
-
-        _unc_pos_tail,_unc_neg_tail,shift,_unc_scale =dummy_tail_param[:,0,:],dummy_tail_param[:,1,:],dummy_tail_param[:,2,:],dummy_tail_param[:,3,:]        # print("HHHH-",_unc_pos_tail.shape)
-        if fix_tail==True:
-            # print("hello",fix_tail_param_pos.shape,_unc_pos_tail.shape)
-            fix_tail_param_pos=fix_tail_param_pos.reshape(_unc_pos_tail.shape)
-            fix_tail_param_neg=fix_tail_param_neg.reshape(_unc_neg_tail.shape)
-
-            z, lad = _tail_affine_inverse(
-                x, fix_tail_param_pos,fix_tail_param_neg , shift, self.scale(_unc_scale)
-                )
-        else:
-            z, lad = _tail_affine_inverse(
-                x, self.pos_tail(_unc_pos_tail), self.neg_tail(_unc_neg_tail), shift, self.scale(_unc_scale)
-                )
-        return z
-
-    def dTTF_dtailparam(self,z,tail_param): #outputs 4 derovatove each of B X 2 aditya
-        dim=self.dimz
-        dummy_tail_param=tail_param.reshape(tail_param.shape[0],self.og_tail_shape[0],self.og_tail_shape[1])
-
-        _unc_pos_tail,_unc_neg_tail,shift,_unc_scale =dummy_tail_param[:,0,:],dummy_tail_param[:,1,:],dummy_tail_param[:,2,:],dummy_tail_param[:,3,:]
-        return grad_R(z,  self.pos_tail(_unc_pos_tail), self.neg_tail(_unc_neg_tail), shift, self.scale(_unc_scale))
-
-    def fwd_dTTF_dz(self,z,tail_param): #outputs a jacobian B X 2 X 2 aditya
-        dim=self.dimz
-        dummy_tail_param=tail_param.reshape(tail_param.shape[0],self.og_tail_shape[0],self.og_tail_shape[1])
-
-        _unc_pos_tail,_unc_neg_tail,shift,_unc_scale =dummy_tail_param[:,0,:],dummy_tail_param[:,1,:],dummy_tail_param[:,2,:],dummy_tail_param[:,3,:]
-
-        return torch.diag_embed((dTTF_dz(z,  self.pos_tail(_unc_pos_tail), self.neg_tail(_unc_neg_tail), shift, self.scale(_unc_scale))))
-
-    def fwd_dTTFInverse_dz(self,z,tail_param):
-
-        dim=self.dimz
-        dummy_tail_param=tail_param.reshape(tail_param.shape[0],self.og_tail_shape[0],self.og_tail_shape[1])
-
-        _unc_pos_tail,_unc_neg_tail,shift,_unc_scale =dummy_tail_param[:,0,:],dummy_tail_param[:,1,:],dummy_tail_param[:,2,:],dummy_tail_param[:,3,:]
-
-        return torch.diag_embed((dTTFInverse_dz(z,  self.pos_tail(_unc_pos_tail), self.neg_tail(_unc_neg_tail), shift, self.scale(_unc_scale))))

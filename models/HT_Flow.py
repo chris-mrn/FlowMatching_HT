@@ -57,14 +57,14 @@ class HT_FlowMatching_X0:
             optim1.zero_grad()
             optim2.zero_grad()
             const=-1
-            param_tail_pre=self.Tail_paramNet(1+torch.zeros(noise.shape[0],1).to(self.device)) #BX80
-            dummy_tail_param=param_tail_pre.reshape(param_tail_pre.shape[0],4,self.dim)
+            param_tail_pre = self.Tail_paramNet(1+torch.zeros(noise.shape[0],1).to(self.device)) #BX80
+            dummy_tail_param = param_tail_pre.reshape(param_tail_pre.shape[0],4,self.dim)
             _unc_pos_tail,_unc_neg_tail,shift,_unc_scale = dummy_tail_param[:,0,:]**2+const,dummy_tail_param[:,1,:]**2+const,dummy_tail_param[:,2,:]*0,dummy_tail_param[:,3,:]*0      # i am keeping shift 0 and var softplus(0)
             param_tail=torch.cat([_unc_pos_tail,_unc_neg_tail,shift,_unc_scale],1)
 
             x_1 = data.float().to(self.device)   #batch x 20
-            x_0 = noise.float().to(self.device)#torch.randn_like(x_1).float().to(self.device) #batch x 20
-            x_0 = self.TTF(x_0,param_tail)
+            x_0 = noise.float().to(self.device) #torch.randn_like(x_1).float().to(self.device) #batch x 20
+            x_0 = self.TTF(x_0, param_tail)
 
 
             if iI<(3*self.epochs)//4:

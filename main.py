@@ -11,10 +11,11 @@ import numpy as np
 from utils import plot_model_samples
 import matplotlib.pyplot as plt
 import flow_matching
+from models.NewX0Heavy import FlowMatchingHTX0, TTF
 
 from models.HT_Flow import HT_FlowMatching_X0
 from net.net2D import MLP, MLP_TailParam
-from models.utils.extreme_transforms import TTF
+#from models.utils.extreme_transforms import TTF
 
 
 
@@ -29,10 +30,10 @@ def main():
     X0 = torch.randn_like(torch.Tensor(X1))
 
     # Creating dataloader
-    dataloader1 = torch.utils.data.DataLoader(X1, batch_size=4096, shuffle=True)
-    dataloader0 = torch.utils.data.DataLoader(X0, batch_size=4096, shuffle=True)
+    dataloader1 = torch.utils.data.DataLoader(X1, batch_size=2, shuffle=True)
+    dataloader0 = torch.utils.data.DataLoader(X0, batch_size=2, shuffle=True)
 
-    device = 'cuda'
+    device = 'cpu'
 
     # Setting the parameters of the model
     dim = 2
@@ -48,17 +49,17 @@ def main():
     model_FM.train(optimizer_fm, dataloader1 , dataloader0 , n_epochs=epochs)
     gen_FM_samples, hist_FM = model_FM.sample_from(X0.to(device))
 
+    net = FMnet()
+    ttf = TTF(dim=dim).to(device)
 
-    flow_net = MLP(input_dim=dim, time_dim=1, hidden_dim=hidden_dim).to(device)
-    tail_net = MLP_TailParam(time_dim=1, hidden_dim=hidden_dim//2, output_dim=4*dim).to(device)
+    optimizer = torch.optim.Adam(list(net.parameters()) + list(ttf.parameters()),
+                                 lr=lr,
+                                 weight_decay=1e-3)
 
-    optim_net = torch.optim.Adam(flow_net.parameters(), lr=lr, weight_decay=1e-3)
-    optim_tail = torch.optim.Adam(tail_net.parameters(), lr=lr, weight_decay=1e-3)
-    ttf = TTF(dimz=dim).to(device)
+    model_ht_fm = FlowMatchingHTX0(net, ttf, dim, device)
+    model_ht_fm.train(optimizer, dataloader1, dataloader0, epochs)
+    gen_samples_FMHT, hist = model_ht_fm.sample_from(X0.to(device))
 
-    model_ht_fm = HT_FlowMatching_X0(tail_net, flow_net, ttf, dim, device)
-    model_ht_fm.train(optim_net, optim_tail, dataloader1, dataloader0, epochs)
-    gen_samples_FMHT = model_ht_fm.sample_from(X0.to(device))
 
     # Plots
     plot_model_samples(

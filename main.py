@@ -26,7 +26,7 @@ def main():
     data = torch.tensor(np.load("data/ST2.npy"))
 
     indices = torch.randperm(data.size(0))  # Get random indices
-    X1 = data[indices][:200000]  # Apply the random permutation
+    X1 = data[indices][:100000]  # Apply the random permutation
     X0 = torch.randn_like(torch.Tensor(X1))
 
     # Creating dataloader
@@ -40,12 +40,12 @@ def main():
     lr = 1e-4
     epochs = 50
 
-
+    """"""""""""""""
     net_fm = FMnet().to(device)
     model_FM = GaussFlowMatching_OT(net_fm, device=device)
     optimizer_fm = torch.optim.Adam(net_fm.parameters(), lr)
 
-    model_FM.train(optimizer_fm, dataloader1 , dataloader0 , n_epochs=epochs)
+    model_FM.train(optimizer_fm, dataloader1 , dataloader0 , n_epochs=1)
     gen_FM_samples, hist_FM = model_FM.sample_from(X0.to(device))
 
     net = FMnet().to(device)
@@ -58,21 +58,21 @@ def main():
     model_FMX0_HT = FlowMatchingX0HT(net, ttf, dim, device)
     model_FMX0_HT.train(optimizer, dataloader1, dataloader0, epochs)
     gen_samples_X0, hist = model_FMX0_HT.sample_from(X0.to(device))
+    """""""""""
 
     net_HT = HeavyT_MLP().to(device)
     model_FM_HT = GaussFlowMatching_OT(net_HT, device=device)
-    optimizer_fm = torch.optim.Adam(net_fm.parameters(), lr)
+    optimizer = torch.optim.Adam(net_HT.parameters(), lr)
 
-    model_FM.train(optimizer_fm, dataloader1 , dataloader0 , n_epochs=epochs)
-    gen_FM_samples, hist_FM = model_FM.sample_from(X0.to(device))
+    model_FM_HT.train(optimizer, dataloader1 , dataloader0 , n_epochs=epochs)
 
-    gen_samples_FMHT, hist_FMHT = model_FM_HT.sample_from(X0.to(device))
+    gen_samples_FM_HT, hist_FMHT = model_FM_HT.sample_from(X0.to(device))
 
 
     # Plots
     plot_model_samples(
-        [gen_FM_samples, gen_samples_X0, gen_samples_FMHT],
-        ['FM', 'FM_X0', 'FM_HT'],
+        [ gen_samples_FM_HT],
+        [ 'FM_HT'],
         X1)
 
 

@@ -76,15 +76,14 @@ class HeavyT_MLP(nn.Module):
         self.main = nn.Sequential(
             nn.Linear(input_dim+time_dim, hidden_dim),
             Swish(),
-            basicTTF(dim=hidden_dim),
             nn.Linear(hidden_dim, hidden_dim),
             Swish(),
             nn.Linear(hidden_dim, hidden_dim),
             Swish(),
             nn.Linear(hidden_dim, hidden_dim),
             Swish(),
-            basicTTF(dim=hidden_dim),
             nn.Linear(hidden_dim, input_dim),
+            basicTTF(dim=input_dim)
             )
 
 
@@ -116,75 +115,6 @@ class MLP(nn.Module):
             nn.Linear(hidden_dim, hidden_dim),
             Swish(),
             nn.Linear(hidden_dim, input_dim),
-            )
-
-
-    def forward(self, x: Tensor, t: Tensor) -> Tensor:
-        sz = x.size()
-        x = x.reshape(-1, self.input_dim)
-        t = t.reshape(-1, self.time_dim).float()
-
-        t = t.reshape(-1, 1).expand(x.shape[0], 1)
-        h = torch.cat([x, t], dim=1)
-        output = self.main(h)
-
-        return output.reshape(*sz)
-
-
-class MLP_TailParam(nn.Module):
-    def __init__(self, time_dim: int = 1, hidden_dim: int = 128,output_dim: int =8):
-        super().__init__()
-
-        self.time_dim = time_dim
-        self.hidden_dim = hidden_dim
-        self.output_dim= output_dim
-        self.change_input=nn.Linear(output_dim//4,output_dim//4)
-
-        self.main = nn.Sequential(
-            nn.Linear(time_dim, hidden_dim),
-            Swish(),
-            nn.Linear(hidden_dim, hidden_dim//2),
-            Swish(),
-            nn.Linear(hidden_dim//2, hidden_dim//4),
-            Swish(),
-            nn.Linear(hidden_dim//4, hidden_dim//8),
-            Swish(),
-            nn.Linear(hidden_dim//8, output_dim),
-            )
-
-
-    def forward( self,t: Tensor) -> Tensor:
-        # sz = x.size()
-        # x = x.reshape(-1, self.input_dim)
-        # t = t.reshape(-1, self.time_dim).float()
-
-        # t = t.reshape(-1, 1).expand(x.shape[0], 1)
-        # h = torch.cat([x, t], dim=1)
-        # print("YES",t.shape)
-        output = self.main(t.float())
-
-        return output#.reshape(*sz)
-
-
-
-class MLP2(nn.Module):
-    def __init__(self, input_dim: int = 2, time_dim: int = 1, hidden_dim: int = 128):
-        super().__init__()
-
-        self.input_dim = input_dim
-        self.time_dim = time_dim
-        self.hidden_dim = hidden_dim
-
-        self.main = nn.Sequential(
-            nn.Linear(input_dim+time_dim, hidden_dim),
-            Swish(),
-            nn.Linear(hidden_dim, hidden_dim//2),
-            # Swish(),
-            # nn.Linear(hidden_dim//2, hidden_dim//4),
-            Swish(),
-            nn.Linear(hidden_dim//2, hidden_dim//4),
-            Swish(),
-            nn.Linear(hidden_dim//4, input_dim),
             )
 
 

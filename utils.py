@@ -82,15 +82,15 @@ def plot_model_samples(sample_list, model_names, ground_truth, figsize=(20, 5), 
     for i, (samples, name) in enumerate(zip(all_data[:-1], model_names)):
         axs[i].scatter(samples[:, 0], samples[:, 1], s=1)
         axs[i].set_title(f'{name} Samples')
-        axs[i].set_xlim(x_min, x_max)
-        axs[i].set_ylim(y_min, y_max)
+        axs[i].set_xlim(-90, 90)
+        axs[i].set_ylim(-90, 90)
 
     # Plot ground truth
     gt = all_data[-1]
     axs[-1].scatter(gt[:, 0], gt[:, 1], s=1)
     axs[-1].set_title('Ground Truth Samples')
-    axs[-1].set_xlim(x_min, x_max)
-    axs[-1].set_ylim(y_min, y_max)
+    axs[-1].set_xlim(-90, 90)
+    axs[-1].set_ylim(-90, 90)
 
     plt.tight_layout()
 

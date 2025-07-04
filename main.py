@@ -33,7 +33,7 @@ def main():
     dataloader1 = torch.utils.data.DataLoader(X1, batch_size=2048, shuffle=True)
     dataloader0 = torch.utils.data.DataLoader(X0, batch_size=2048, shuffle=True)
 
-    device = 'cuda'
+    device = 'cpu'
 
     # Setting the parameters of the model
     dim = 2
@@ -48,7 +48,7 @@ def main():
     model_FM.train(optimizer_fm, dataloader1 , dataloader0 , n_epochs=epochs)
     gen_FM_samples, hist_FM = model_FM.sample_from(X0.to(device))
 
-    """"""""""""""""
+
     net = FMnet().to(device)
     ttf = basicTTF(dim=dim).to(device)
 
@@ -59,7 +59,6 @@ def main():
     model_FMX0_HT = FlowMatchingX0HT(net, ttf, dim, device)
     model_FMX0_HT.train(optimizer, dataloader1, dataloader0, epochs)
     gen_samples_X0, hist = model_FMX0_HT.sample_from(X0.to(device))
-    """""""""""
 
     net_HT = HeavyT_MLP().to(device)
     model_FM_HT = GaussFlowMatching_OT(net_HT, device=device)
@@ -72,8 +71,8 @@ def main():
 
     # Plots
     plot_model_samples(
-        [ gen_samples_FM_HT, gen_FM_samples],
-        [ 'FM_HT', 'FM'],
+        [ gen_FM_samples, gen_samples_X0, gen_samples_FM_HT],
+        [ 'FM', 'FM_HT_X0', 'FM_HT'],
         X1)
 
 

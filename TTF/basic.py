@@ -13,7 +13,7 @@ class basicTTF(torch.nn.Module):
         return torch.log(1 + torch.exp(x))
 
     def normalize(self, x):
-        return (1+torch.tanh(x))/3 + 1e-1
+        return (1+torch.tanh(x))/4 + 1e-1
 
     def forward(self, z):
 

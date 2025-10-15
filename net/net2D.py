@@ -60,7 +60,8 @@ class HeavyT_MLP(nn.Module):
             nn.Linear(hidden_dim, hidden_dim),
             Swish(),
             nn.Linear(hidden_dim, input_dim),
-            basicTTF(dim=input_dim)
+            basicTTF(dim=input_dim),
+            nn.Linear(input_dim, input_dim)
             )
 
     def forward(self, x: Tensor, t: Tensor) -> Tensor:

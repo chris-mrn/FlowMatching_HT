@@ -1,9 +1,9 @@
 import torch
 import torch.nn as nn
-import torchvision
 from net.unet import Unet
 from net.net2D import FMnet, MLP2D
 from models.Flow import GaussFlowMatching_OT
+from models.Flow_with_TTF_logging import GaussFlowMatching_OT_TTF
 from models.Score import NCSN
 import torchvision.transforms as transforms
 from utils import parse_arguments, show_images
@@ -26,7 +26,7 @@ def main():
     data = torch.tensor(np.load("data/ST2.npy"))
 
     indices = torch.randperm(data.size(0))  # Get random indices
-    X1 = data[indices][:100000]  # Apply the random permutation
+    X1 = data[indices][:200000]  # Apply the random permutation
     X0 = torch.randn_like(torch.Tensor(X1))
 
     batch_size = 2*4096
@@ -39,8 +39,8 @@ def main():
 
     # Setting the parameters of the model
     dim = 2
-    lr = 1e-4
-    epochs = 1000
+    lr = 1e-3
+    epochs = 500
 
     """""""""
     net_fm = FMnet().to(device)
@@ -66,12 +66,33 @@ def main():
     net_HT = HeavyT_MLP().to(device)
     #net = MLP().to(device)
     #net_HT = net
-    model_FM_HT = GaussFlowMatching_OT(net_HT, device=device)
+    model_FM_HT = GaussFlowMatching_OT_TTF(net_HT, device=device)  # Use TTF logging version
     optimizer = torch.optim.Adam(net_HT.parameters(), lr)
 
-    model_FM_HT.train(optimizer, dataloader1 , dataloader0 , n_epochs=epochs)
+    print("Starting training with TTF parameter tracking...")
+    model_FM_HT.train(optimizer, dataloader1, dataloader0, n_epochs=epochs, log_interval=50)
 
+    # Generate samples
     gen_samples_FM_HT, hist_FMHT = model_FM_HT.sample_from(X0.to(device))
+
+    # Plot TTF parameter evolution
+    print("\nPlotting TTF parameter evolution...")
+    model_FM_HT.plot_ttf_evolution('outputs/ttf_parameter_evolution.png')
+
+    # Save TTF parameter history
+    model_FM_HT.save_ttf_history('outputs/ttf_parameter_history.pt')
+
+    # Print TTF statistics
+    ttf_stats = model_FM_HT.get_ttf_statistics()
+    if ttf_stats:
+        print("\nTTF Parameter Evolution Summary:")
+        for param_name, stats in ttf_stats.items():
+            print(f"\n{param_name.upper()}:")
+            print(f"  Initial: {stats['initial']}")
+            print(f"  Final: {stats['final']}")
+            print(f"  Total Change: {stats['change']}")
+            print(f"  Mean Value: {stats['mean']}")
+            print(f"  Std Deviation: {stats['std']}")
 
     # Collect all generated samples and model names for evaluation
     generated_samples = [gen_samples_FM_HT]

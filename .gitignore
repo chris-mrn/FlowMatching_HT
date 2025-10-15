@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+venv/
+env/
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# PyTorch models
+*.pth
+*.pt
+*.ckpt
+
+# Data files (except essential ones)
+*.csv
+*.json
+*.pkl
+*.h5
+!data/ST1.npy
+!data/ST2.npy
+
+# Outputs
+outputs/
+results/
+logs/
+wandb/
+mlruns/
+
+# Jupyter
+.ipynb_checkpoints
+
+# Temporary
+*.tmp
+*.log

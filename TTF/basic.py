@@ -4,10 +4,11 @@ import numpy as np
 class basicTTF(torch.nn.Module):
     def __init__(self, dim=2):
         super().__init__()
-        self.lambd_plus = torch.nn.Parameter(torch.randn((dim)))
-        self.lambd_neg = torch.nn.Parameter(torch.randn((dim)))
-        self.mu = torch.nn.Parameter(torch.randn((dim)))
-        self.sigma = torch.nn.Parameter(torch.randn((dim)))
+        scale = 1e-2
+        self.lambd_plus = torch.nn.Parameter(scale * torch.randn(dim))
+        self.lambd_neg  = torch.nn.Parameter(scale * torch.randn(dim))
+        self.mu         = torch.nn.Parameter(scale * torch.randn(dim))
+        self.sigma      = torch.nn.Parameter(scale * torch.randn(dim))
 
     def softplus(self, x):
         return torch.log(1 + torch.exp(x))
@@ -27,4 +28,4 @@ class basicTTF(torch.nn.Module):
         x = (torch.pow(g, - lambd_s) - 1) / lambd_s
         x =  sign * x * sigma + self.mu
 
-        return x
+        return z+x

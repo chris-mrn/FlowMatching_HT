@@ -1,139 +1,169 @@
 import torch
-import torch.nn as nn
-from net.unet import Unet
-from net.net2D import FMnet, MLP2D
-from models.Flow import GaussFlowMatching_OT
-from models.Flow_with_TTF_logging import GaussFlowMatching_OT_TTF
-from models.Score import NCSN
-import torchvision.transforms as transforms
-from utils import parse_arguments, show_images
 import numpy as np
-from utils import plot_model_samples
-import matplotlib.pyplot as plt
-import flow_matching
-from models.Flow_X0HT import FlowMatchingX0HT
-from TTF.basic import basicTTF
-from net.net2D import HeavyT_MLP, MLP
-
-#from models.utils.extreme_transforms import TTF
-
+import os
+from utils import parse_arguments, load_config, plot_model_samples, create_network, create_model
 
 
 def main():
-    # Parse arguments
-
+    # Parse arguments and load config
     args = parse_arguments()
-    data = torch.tensor(np.load("data/ST2.npy"))
+    config = load_config(args.config)
 
-    indices = torch.randperm(data.size(0))  # Get random indices
-    X1 = data[indices][:200000]  # Apply the random permutation
-    X0 = torch.randn_like(torch.Tensor(X1))
+    # Apply command-line overrides
+    if args.device is not None:
+        config.device = args.device
+    if args.epochs is not None:
+        config.epochs = args.epochs
+    if args.batch_size is not None:
+        config.batch_size = args.batch_size
+    if args.lr is not None:
+        config.lr = args.lr
+    if args.train_ratio is not None:
+        config.train_ratio = args.train_ratio
 
-    batch_size = 2*4096
-
-    # Creating dataloader
-    dataloader1 = torch.utils.data.DataLoader(X1, batch_size=batch_size, shuffle=True)
-    dataloader0 = torch.utils.data.DataLoader(X0, batch_size=batch_size, shuffle=True)
-
-    device = 'cuda'
-
-    # Setting the parameters of the model
-    dim = 2
-    lr = 1e-3
-    epochs = 500
-
-    """""""""
-    net_fm = FMnet().to(device)
-    model_FM = GaussFlowMatching_OT(net_fm, device=device)
-    optimizer_fm = torch.optim.Adam(net_fm.parameters(), lr)
-
-    model_FM.train(optimizer_fm, dataloader1 , dataloader0 , n_epochs=epochs)
-    gen_FM_samples, hist_FM = model_FM.sample_from(X0.to(device))
-
-
-    net = FMnet().to(device)
-    ttf = basicTTF(dim=dim).to(device)
-
-    optimizer = torch.optim.Adam(list(net.parameters()) + list(ttf.parameters()),
-                                 lr=lr,
-                                 weight_decay=1e-3)
-
-    model_FMX0_HT = FlowMatchingX0HT(net, ttf, dim, device)
-    model_FMX0_HT.train(optimizer, dataloader1, dataloader0, epochs)
-    gen_samples_X0, hist = model_FMX0_HT.sample_from(X0.to(device))
-    """""""""
-
-    net_HT = HeavyT_MLP().to(device)
-    #net = MLP().to(device)
-    #net_HT = net
-    model_FM_HT = GaussFlowMatching_OT_TTF(net_HT, device=device)  # Use TTF logging version
-    optimizer = torch.optim.Adam(net_HT.parameters(), lr)
-
-    print("Starting training with TTF parameter tracking...")
-    model_FM_HT.train(optimizer, dataloader1, dataloader0, n_epochs=epochs, log_interval=50)
-
-    # Generate samples
-    gen_samples_FM_HT, hist_FMHT = model_FM_HT.sample_from(X0.to(device))
-
-    # Plot TTF parameter evolution
-    print("\nPlotting TTF parameter evolution...")
-    model_FM_HT.plot_ttf_evolution('outputs/ttf_parameter_evolution.png')
-
-    # Save TTF parameter history
-    model_FM_HT.save_ttf_history('outputs/ttf_parameter_history.pt')
-
-    # Print TTF statistics
-    ttf_stats = model_FM_HT.get_ttf_statistics()
-    if ttf_stats:
-        print("\nTTF Parameter Evolution Summary:")
-        for param_name, stats in ttf_stats.items():
-            print(f"\n{param_name.upper()}:")
-            print(f"  Initial: {stats['initial']}")
-            print(f"  Final: {stats['final']}")
-            print(f"  Total Change: {stats['change']}")
-            print(f"  Mean Value: {stats['mean']}")
-            print(f"  Std Deviation: {stats['std']}")
-
-    # Collect all generated samples and model names for evaluation
-    generated_samples = [gen_samples_FM_HT]
-    model_names = ['FM_HT']
-
-    # If other models are trained (uncomment the sections above), add them:
-    # generated_samples.extend([gen_FM_samples, gen_samples_X0])
-    # model_names.extend(['FM_Standard', 'FM_X0_HT'])
-
-    # Plots with basic metrics
-    plot_model_samples(
-        generated_samples,
-        model_names,
-        X1,
-        show_metrics=True)
-
-    # Comprehensive evaluation with detailed metrics
-    print("\n" + "="*60)
-    print("RUNNING COMPREHENSIVE HEAVY-TAIL EVALUATION")
+    # Print configuration
+    print("="*60)
+    print("FLOW MATCHING FOR HEAVY-TAIL DISTRIBUTIONS")
+    print("="*60)
+    print(f"Config: {args.config}")
+    print(f"Model: {config.model_name}")
+    print(f"Network: {config.network_type}")
+    print(f"Flow: {config.flow_type}")
+    print(f"Device: {config.device}")
+    print(f"Batch size: {config.batch_size}")
+    print(f"Epochs: {config.epochs}")
+    print(f"Learning rate: {config.lr}")
+    print(f"Train ratio: {getattr(config, 'train_ratio', 0.8):.1%}")
+    print(f"TTF logging: {config.use_ttf_logging}")
     print("="*60)
 
+    # Setup device
+    device = config.device
+    if device == 'cuda' and not torch.cuda.is_available():
+        print("Warning: CUDA requested but not available. Using CPU instead.")
+        device = 'cpu'
+
+    # Load data
+    data = torch.tensor(np.load(config.data_file))
+    indices = torch.randperm(data.size(0))
+    total_data = data[indices][:config.num_samples]
+
+    # Split data into train and test sets
+    train_ratio = getattr(config, 'train_ratio', 0.8)  # Default 80% train, 20% test
+    n_total = total_data.size(0)
+    n_train = int(n_total * train_ratio)
+
+    X1_train = total_data[:n_train]
+    X1_test = total_data[n_train:]
+
+    X0_train = torch.randn_like(X1_train)
+    X0_test = torch.randn_like(X1_test)
+
+    print(f"Data split: {n_train} train samples, {n_total - n_train} test samples")
+
+    # Create dataloaders (only training data used for training)
+    dataloader1 = torch.utils.data.DataLoader(X1_train, batch_size=config.batch_size, shuffle=True)
+    dataloader0 = torch.utils.data.DataLoader(X0_train, batch_size=config.batch_size, shuffle=True)
+
+    # Create network and model
+    network = create_network(config).to(device)
+
+    if config.flow_type == "FlowMatchingX0HT":
+        model, ttf = create_model(network, config, device)
+        # Special optimizer for X0HT (includes TTF parameters)
+        optimizer = torch.optim.Adam(
+            list(network.parameters()) + list(ttf.parameters()),
+            lr=config.lr,
+            weight_decay=getattr(config, 'weight_decay', 0.0)
+        )
+    else:
+        model = create_model(network, config, device)
+        optimizer = torch.optim.Adam(network.parameters(), lr=config.lr)
+
+    # Training
+    print(f"\nStarting training...")
+    if config.use_ttf_logging and hasattr(model, 'train') and 'log_interval' in model.train.__code__.co_varnames:
+        model.train(optimizer, dataloader1, dataloader0, n_epochs=config.epochs, log_interval=config.log_interval)
+    else:
+        model.train(optimizer, dataloader1, dataloader0, n_epochs=config.epochs)
+
+    # Generate samples
+    print(f"\nGenerating samples...")
+    gen_samples_train, _ = model.sample_from(X0_train.to(device))
+    gen_samples_test, _ = model.sample_from(X0_test.to(device))
+
+    # TTF parameter analysis (if enabled)
+    if config.use_ttf_logging and hasattr(model, 'plot_ttf_evolution'):
+        print("\nAnalyzing TTF parameter evolution...")
+        os.makedirs(config.output_dir, exist_ok=True)
+        model.plot_ttf_evolution(os.path.join(config.output_dir, 'ttf_evolution.png'))
+        model.save_ttf_history(os.path.join(config.output_dir, 'ttf_history.pt'))
+
+        # Print summary
+        stats = model.get_ttf_statistics()
+        if stats:
+            print("TTF Parameter Summary:")
+            for param_name, param_stats in stats.items():
+                change = np.linalg.norm(param_stats['change'])
+                print(f"  {param_name}: change magnitude = {change:.4f}")
+
+    # Create plots and evaluation
+    print(f"\nGenerating plots and evaluation...")
+    os.makedirs(config.output_dir, exist_ok=True)
+
+    # Sample plots for both train and test
+    plot_model_samples(
+        [gen_samples_train],
+        [f"{config.model_name.upper()}_TRAIN"],
+        X1_train,
+        show_metrics=False,  # Metrics will be shown in full evaluation
+        save_path=os.path.join(config.output_dir, 'samples_train.png')
+    )
+
+    plot_model_samples(
+        [gen_samples_test],
+        [f"{config.model_name.upper()}_TEST"],
+        X1_test,
+        show_metrics=False,  # Metrics will be shown in full evaluation
+        save_path=os.path.join(config.output_dir, 'samples_test.png')
+    )
+
+    # Comprehensive evaluation on TRAINING data
+    print("\n" + "="*60)
+    print("EVALUATION ON TRAINING DATA")
+    print("="*60)
     try:
         from evaluation import run_full_evaluation
-
-        # Run complete evaluation suite
-        evaluation_results = run_full_evaluation(
-            real_data=X1,
-            generated_samples=generated_samples,
-            model_names=model_names,
-            output_dir='outputs/evaluation',
+        train_results = run_full_evaluation(
+            real_data=X1_train,
+            generated_samples=[gen_samples_train],
+            model_names=[f"{config.model_name.upper()}_TRAIN"],
+            output_dir=os.path.join(config.output_dir, 'evaluation_train'),
             create_plots=True
         )
-
-        print("\n" + "="*60)
-        print("EVALUATION COMPLETED SUCCESSFULLY!")
-        print("Check the 'outputs/evaluation' directory for detailed results.")
-        print("="*60)
-
     except Exception as e:
-        print(f"Error during evaluation: {e}")
-        print("Continuing without detailed evaluation...")
+        print(f"Warning: Training evaluation failed: {e}")
+
+    # Comprehensive evaluation on TEST data
+    print("\n" + "="*60)
+    print("EVALUATION ON TEST DATA")
+    print("="*60)
+    try:
+        test_results = run_full_evaluation(
+            real_data=X1_test,
+            generated_samples=[gen_samples_test],
+            model_names=[f"{config.model_name.upper()}_TEST"],
+            output_dir=os.path.join(config.output_dir, 'evaluation_test'),
+            create_plots=True
+        )
+        print(f"✅ Evaluation completed! Results saved to: {config.output_dir}")
+    except Exception as e:
+        print(f"Warning: Test evaluation failed: {e}")
+
+    print("\n" + "="*60)
+    print("TRAINING COMPLETED SUCCESSFULLY!")
+    print(f"Outputs saved to: {config.output_dir}")
+    print("="*60)
 
 
 if __name__ == "__main__":

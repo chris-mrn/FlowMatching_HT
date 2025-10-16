@@ -4,25 +4,22 @@ PyTorch implementation of Flow Matching models for heavy-tailed distributions, f
 
 ## Models
 
-- **Standard FM**: Basic flow matching with optimal transport
-- **FM-HT**: Flow matching with heavy-tail specialized networks
-- **FM-X0-HT**: Flow matching with TTF transformations on source distribution
+- **Heavy-T MLP**: Heavy-tail MLP with TTF logging
+- **Standard MLP**: Standard MLP without TTF
+- **FM Net**: Flow Matching Network
+- **FM X0-HT**: Flow Matching with X0 Heavy-Tail transformation
 
-## New: Comprehensive Evaluation Metrics
+## Features
 
-This implementation includes specialized evaluation metrics for heavy-tail generative modeling:
-- **Tail Index Estimation** (Hill estimator)
-- **Tail Behavior Comparison** (extreme quantiles)
-- **Wasserstein Distance** for robust distribution comparison
-- **KL Divergence** and Kolmogorov-Smirnov tests
-- **Comprehensive visualizations** including Q-Q plots, complementary CDFs, and tail analysis
-
-Metrics are automatically computed after training. See `EVALUATION_GUIDE.md` for details.
+- **YAML Configuration System**: Easy model selection via config files
+- **TTF Parameter Tracking**: Monitor tail transformation evolution
+- **Heavy-tail Evaluation**: 5 specialized metrics (Wasserstein, tail index, quantile ratios)
+- **Utility Functions**: Clean model creation with `create_network()` and `create_model()`
 
 ## Installation
 
 ```bash
-pip install torch torchvision numpy matplotlib flow_matching scipy
+pip install torch torchvision numpy matplotlib flow_matching scipy pyyaml
 git clone https://github.com/chris-mrn/FlowMatching_HT.git
 cd FlowMatching_HT
 ```
@@ -30,46 +27,69 @@ cd FlowMatching_HT
 ## Usage
 
 ```bash
-python main.py --device cpu  # or cuda for GPU
-```
+# Use default config (heavy_t_mlp)
+python main.py
 
-After training, comprehensive evaluation metrics will be automatically computed and saved to `outputs/evaluation/`.
+# Use specific config
+python main.py --config standard_mlp
+python main.py --config fm_net
+python main.py --config fm_x0_ht
+
+# Override parameters
+python main.py --config heavy_t_mlp --epochs 1000 --batch-size 4096
+
+# Custom train/test split (default: 80% train, 20% test)
+python main.py --config fm_net --train-ratio 0.9  # 90% train, 10% test
+```
 
 ## Structure
 
 ```
-├── main.py                   # Training script with automatic evaluation
-├── evaluation.py             # Heavy-tail evaluation metrics
+├── main.py                   # Training script with config system
+├── utils.py                  # Utility functions (create_network, create_model)
+├── configs/                  # YAML configuration files
+│   ├── heavy_t_mlp.yaml     # Heavy-tail MLP with TTF
+│   ├── standard_mlp.yaml    # Standard MLP
+│   ├── fm_net.yaml          # Flow Matching Network
+│   └── fm_x0_ht.yaml        # X0 Heavy-tail transformation
+├── evaluation.py             # Heavy-tail evaluation metrics (5 key metrics)
 ├── models/                   # Flow matching implementations
-│   ├── Flow.py              # Standard Gaussian Flow Matching
-│   └── Flow_X0HT.py         # Flow Matching with TTF
-├── net/                     # Neural architectures
-├── TTF/                     # Tail-to-Tail Flow transformations
-├── data/                    # Dataset handling (Student-t, Pareto, Funnel)
-└── outputs/                 # Results and evaluation reports
-    └── evaluation/          # Detailed metrics and plots
+├── net/                      # Neural architectures
+├── TTF/                      # Tail-to-Tail Flow transformations
+└── outputs/                  # Results and evaluation reports
 ```
 
-## Key Features
+## Available Configs
 
-- **TTF (Tail-to-Tail Flow)**: Learnable transformations for heavy-tail modeling
-- **Heavy-tail networks**: Specialized MLPs for heavy-tailed distributions
-- **Multiple datasets**: Student-t (2D), Pareto (20D), Funnel (2D)
-- **Comprehensive evaluation**: Automated heavy-tail specific metrics
-- **Visual analysis**: Q-Q plots, tail comparison, complementary CDFs
+- **heavy_t_mlp.yaml**: HeavyT_MLP + GaussFlowMatching_OT_TTF (with TTF logging)
+- **standard_mlp.yaml**: MLP + GaussFlowMatching_OT
+- **fm_net.yaml**: FMnet + GaussFlowMatching_OT
+- **fm_x0_ht.yaml**: FMnet + FlowMatchingX0HT + basicTTF
 
-## Parameters
+## Evaluation
 
-- Learning rate: 1e-4
-- Batch size: 2048
-- Epochs: 1000
+**Automatic Train/Test Split Evaluation:**
+- Data automatically split into train (80%) and test (20%) sets
+- Training performed only on training data
+- Evaluation performed on both training and test sets separately
+- Separate metrics, plots, and reports for train vs test performance
 
-## Evaluation Outputs
+**5 Heavy-Tail Specific Metrics:**
+- Wasserstein distance
+- Tail index difference
+- Quantile ratios (0.99, 0.999)
+- 4th moment ratio
 
-After training, check:
-- `outputs/evaluation/detailed_metrics.txt` - Complete numerical results
-- `outputs/evaluation/tail_comparison.png` - Visual tail analysis
-- `outputs/evaluation/model_ranking.txt` - Model performance ranking
-
-
+**Output Structure:**
+```
+outputs/
+├── samples_train.png          # Training set samples
+├── samples_test.png           # Test set samples
+├── evaluation_train/          # Training evaluation
+│   ├── detailed_metrics.txt
+│   └── tail_comparison.png
+└── evaluation_test/           # Test evaluation
+    ├── detailed_metrics.txt
+    └── tail_comparison.png
+```
 ```

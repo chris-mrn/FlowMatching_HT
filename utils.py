@@ -4,18 +4,82 @@ import matplotlib.pyplot as plt
 import torchvision.utils as vutils
 import os
 import numpy as np
+import yaml
+from types import SimpleNamespace
+
+def load_config(config_name):
+    """Load configuration from YAML config file"""
+    config_path = f"configs/{config_name}.yaml"
+
+    if not os.path.exists(config_path):
+        available_configs = [f.replace('.yaml', '') for f in os.listdir('configs') if f.endswith('.yaml')]
+        raise FileNotFoundError(f"Config '{config_name}' not found. Available configs: {available_configs}")
+
+    # Load the YAML config
+    with open(config_path, 'r') as f:
+        config_dict = yaml.safe_load(f)
+
+    # Flatten nested dictionaries for easier access
+    flattened = {}
+    for key, value in config_dict.items():
+        if isinstance(value, dict):
+            for subkey, subvalue in value.items():
+                flattened[subkey] = subvalue
+        else:
+            flattened[key] = value
+
+    # Convert to namespace for attribute access
+    return SimpleNamespace(**flattened)
+
 def parse_arguments():
     parser = argparse.ArgumentParser(
-        description="A script to train generative models."
+        description="Train Flow Matching models for heavy-tailed distributions using config files."
     )
 
     parser.add_argument(
+        "--config",
+        type=str,
+        default="heavy_t_mlp",
+        help="Name of the config file to use (without .yaml extension). Available: heavy_t_mlp, standard_mlp, fm_net, fm_x0_ht",
+    )
+
+    # Optional overrides
+    parser.add_argument(
         "--device",
         type=str,
-        default="cpu",
+        default=None,
         choices=["cuda", "mps", "cpu"],
-        help="Device to use",
+        help="Override device from config",
     )
+
+    parser.add_argument(
+        "--epochs",
+        type=int,
+        default=None,
+        help="Override epochs from config",
+    )
+
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=None,
+        help="Override batch size from config",
+    )
+
+    parser.add_argument(
+        "--lr",
+        type=float,
+        default=None,
+        help="Override learning rate from config",
+    )
+
+    parser.add_argument(
+        "--train-ratio",
+        type=float,
+        default=None,
+        help="Override train/test split ratio from config (default: 0.8)",
+    )
+
     return parser.parse_args()
 
 
@@ -82,10 +146,11 @@ def plot_model_samples(sample_list, model_names, ground_truth, figsize=(20, 5), 
     x_min, x_max = concatenated[:, 0].min(), concatenated[:, 0].max()
     y_min, y_max = concatenated[:, 1].min(), concatenated[:, 1].max()
 
-    # Compute and display metrics if requested
+    # Compute metrics silently if requested (for title enhancement)
+    evaluation_results = None
     if show_metrics:
         try:
-            from evaluation import comprehensive_evaluation, print_evaluation_summary
+            from evaluation import comprehensive_evaluation
 
             # Convert ground truth to tensor if needed
             if isinstance(ground_truth, np.ndarray):
@@ -97,13 +162,10 @@ def plot_model_samples(sample_list, model_names, ground_truth, figsize=(20, 5), 
             sample_tensors = [s.float() if isinstance(s, torch.Tensor) else torch.from_numpy(s).float()
                             for s in sample_list]
 
-            # Compute metrics
+            # Compute metrics (but don't print them here - leave that to main evaluation)
             evaluation_results = comprehensive_evaluation(gt_tensor, sample_tensors, model_names)
 
-            # Print summary
-            print_evaluation_summary(evaluation_results, model_names)
-
-            # Save metrics to file if path provided
+            # Only save metrics to file if path provided (no console printing)
             if metrics_path:
                 os.makedirs(os.path.dirname(metrics_path), exist_ok=True)
                 with open(metrics_path, 'w') as f:
@@ -118,12 +180,11 @@ def plot_model_samples(sample_list, model_names, ground_truth, figsize=(20, 5), 
                             else:
                                 f.write(f"  {metric:<30}: {value}\n")
                         f.write("\n")
-                print(f"Saved metrics to: {metrics_path}")
 
         except ImportError:
-            print("Warning: Could not import evaluation module. Metrics will not be displayed.")
+            pass  # Silently skip if evaluation module not available
         except Exception as e:
-            print(f"Warning: Error computing metrics: {e}")
+            pass  # Silently skip on error
 
     # Plot model samples with metrics in titles if available
     for i, (samples, name) in enumerate(zip(all_data[:-1], model_names)):
@@ -131,14 +192,13 @@ def plot_model_samples(sample_list, model_names, ground_truth, figsize=(20, 5), 
 
         # Add basic statistics to title if metrics are enabled
         title = f'{name} Samples'
-        if show_metrics:
+        if show_metrics and evaluation_results:
             try:
-                # Compute basic tail statistics for display
-                norms = np.linalg.norm(samples, axis=1)
-                q99 = np.quantile(norms, 0.99)
-                from evaluation import tail_index_hill
-                tail_idx = tail_index_hill(torch.from_numpy(norms))
-                title += f'\nQ99: {q99:.2f}, TI: {tail_idx:.3f}'
+                # Use computed metrics for enhanced titles
+                if name in evaluation_results:
+                    w_dist = evaluation_results[name].get('wasserstein_distance', 0)
+                    tail_diff = evaluation_results[name].get('tail_index_diff', 0)
+                    title += f'\nW: {w_dist:.3f}, TI-diff: {tail_diff:.3f}'
             except:
                 pass
 
@@ -216,3 +276,36 @@ def plot_particle_trajectories(histories, model_names, X1, figsize=(20, 5), step
 
     plt.tight_layout()
     plt.show()
+
+
+def create_network(config):
+    """Create network based on config"""
+    from net.net2D import HeavyT_MLP, MLP, FMnet
+
+    if config.network_type == "HeavyT_MLP":
+        return HeavyT_MLP(input_dim=config.input_dim, hidden_dim=config.hidden_dim)
+    elif config.network_type == "MLP":
+        return MLP(input_dim=config.input_dim, hidden_dim=config.hidden_dim)
+    elif config.network_type == "FMnet":
+        return FMnet(dim=config.input_dim, h=config.hidden_dim)
+    else:
+        raise ValueError(f"Unknown network type: {config.network_type}")
+
+
+def create_model(network, config, device):
+    """Create flow model based on config"""
+    from models.Flow import GaussFlowMatching_OT
+    from models.Flow_with_TTF_logging import GaussFlowMatching_OT_TTF
+    from models.Flow_X0HT import FlowMatchingX0HT
+    from TTF.basic import basicTTF
+
+    if config.flow_type == "GaussFlowMatching_OT":
+        return GaussFlowMatching_OT(network, device=device)
+    elif config.flow_type == "GaussFlowMatching_OT_TTF":
+        return GaussFlowMatching_OT_TTF(network, device=device)
+    elif config.flow_type == "FlowMatchingX0HT":
+        # For X0HT, we need both network and TTF
+        ttf = basicTTF(dim=config.input_dim).to(device)
+        return FlowMatchingX0HT(network, ttf, config.input_dim, device), ttf
+    else:
+        raise ValueError(f"Unknown flow type: {config.flow_type}")

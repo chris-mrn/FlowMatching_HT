@@ -251,19 +251,6 @@ def print_evaluation_summary(evaluation_results: Dict[str, Dict[str, float]],
                 print(f"{'N/A':<15}", end="")
         print()
 
-    print("\n" + "=" * 80)
-    print("DETAILED METRICS:")
-    print("=" * 80)
-
-    for name in model_names:
-        print(f"\n{name.upper()}:")
-        print("-" * 40)
-        for metric, value in evaluation_results[name].items():
-            if isinstance(value, float):
-                print(f"  {metric:<30}: {value:.6f}")
-            else:
-                print(f"  {metric:<30}: {value}")
-
 
 def plot_tail_comparison(real_data: torch.Tensor, generated_samples: List[torch.Tensor],
                         model_names: List[str], figsize: Tuple[int, int] = (15, 10),
@@ -428,11 +415,7 @@ def run_full_evaluation(real_data: torch.Tensor, generated_samples: List[torch.T
     # Create output directory
     os.makedirs(output_dir, exist_ok=True)
 
-    print("Running comprehensive heavy-tail generative model evaluation...")
-    print("=" * 70)
-
     # 1. Compute all metrics
-    print("Computing evaluation metrics...")
     evaluation_results = comprehensive_evaluation(real_data, generated_samples, model_names)
 
     # 2. Print summary to console
@@ -480,12 +463,8 @@ def run_full_evaluation(real_data: torch.Tensor, generated_samples: List[torch.T
                 else:
                     f.write(f"  {metric:<35}: {value}\n")
 
-    print(f"Detailed metrics saved to: {metrics_file}")
-
     # 4. Create and save plots
     if create_plots:
-        print("Creating evaluation plots...")
-
         # Tail comparison plot
         tail_plot_path = os.path.join(output_dir, 'tail_comparison.png')
         plot_tail_comparison(real_data, generated_samples, model_names,
@@ -541,9 +520,6 @@ def run_full_evaluation(real_data: torch.Tensor, generated_samples: List[torch.T
         sorted_composite = sorted(composite_scores.items(), key=lambda x: x[1])
         for i, (name, score) in enumerate(sorted_composite, 1):
             f.write(f"  {i}. {name:<20}: {score:.2f}\n")
-
-    print(f"Model ranking saved to: {ranking_file}")
-    print(f"\nEvaluation complete! All results saved to: {output_dir}")
 
     return evaluation_results
 

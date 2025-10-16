@@ -1,0 +1,31 @@
+# Heavy-Tail MLP Configuration
+model_name: "heavy_t_mlp"
+network_type: "HeavyT_MLP"
+flow_type: "GaussFlowMatching_OT_TTF"  # With TTF logging
+use_ttf_logging: true
+
+# Training parameters
+training:
+  batch_size: 8192
+  epochs: 500
+  lr: 0.0001
+  device: "cuda"
+
+# Model parameters
+model:
+  hidden_dim: 128
+  input_dim: 2
+
+# TTF parameters
+ttf:
+  log_interval: 50
+
+# Data parameters
+data:
+  data_file: "data/ST2.npy"
+  num_samples: 100000
+  train_ratio: 0.8  # 80% train, 20% test
+
+# Output parameters
+output:
+  output_dir: "outputs"

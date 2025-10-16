@@ -28,7 +28,38 @@ class basicTTF(torch.nn.Module):
     def normalize(self, x):
         return (1+torch.tanh(x))/4 + 1e-1
 
-    def forward(self, z):
+    def forward(self, z, t):
+        # More stable parameter transformations
+        sigma = 1e-2 + self.softplus(self.sigma)  # Increased minimum value
+        lambd_plus = 0.1 + self.softplus(self.lambd_plus) / 5  # Better range (0.1, ~1.0)
+        lambd_neg = 0.1 + self.softplus(self.lambd_neg) / 5    # Better range (0.1, ~1.0)
+
+        sign = torch.sign(z)
+        lambd_s = torch.where(z > 0, lambd_plus, lambd_neg)
+
+        # More stable computation with clipping
+        g = torch.erfc(torch.abs(z) / np.sqrt(2)).clamp(min=1e-5)
+
+        # L'Hôpital's rule for small lambda values
+        small_lambda = (lambd_s.abs() < 1e-4)
+
+        # Main computation with better numerical stability
+        safe_lambda = torch.where(small_lambda, torch.ones_like(lambd_s), lambd_s)
+        power_term = torch.pow(g, -safe_lambda)
+
+        # Apply L'Hôpital's rule for small lambda (log(g) is the derivative when lambda→0)
+        x = torch.where(
+            small_lambda,
+            -torch.log(g),  # L'Hôpital's rule result
+            (power_term - 1) / safe_lambda  # Standard formula
+        )
+
+        # Final transformation with scaled output
+        x = sign * x * sigma + self.mu
+
+        return x + (1-t)*z
+
+    def forward1(self, z, t):
 
         sigma = 1e-3 + self.softplus(self.sigma)
         lambd_plus = self.normalize(self.lambd_plus)
@@ -37,10 +68,21 @@ class basicTTF(torch.nn.Module):
         sign = torch.sign(z)
         lambd_s = torch.where(z > 0, lambd_plus, lambd_neg)
         g = torch.erfc(torch.abs(z) / np.sqrt(2)) + 1e-6 # handle zero power negative in next line
+        # see Gelu approximation of erfc ?
         x = (torch.pow(g, - lambd_s) - 1) / lambd_s
         x =  sign * x * sigma + self.mu
 
-        return  x
+        return  x + (1-t)*z
+
+    def forward2(self, z, t):
+        # Simpler parameter handling
+        sigma = 1e-2 + self.softplus(self.sigma)
+        alpha = 0.5 + self.softplus(self.lambd_plus) / 4  # Controls tail heaviness (0.5, ~2.0)
+
+        # Student's t-like transformation with controllable degrees of freedom
+        x = z / (1 + torch.abs(z/sigma)**(2/alpha))**(alpha/2) * sigma + self.mu
+
+        return x + (1-t)*z
 
     def log_parameters(self):
         """Log current parameter values for tracking evolution"""

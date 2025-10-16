@@ -7,13 +7,13 @@ use_ttf_logging: true
 # Training parameters
 training:
   batch_size: 8192
-  epochs: 1000
+  epochs: 2000
   lr: 0.0002
   device: "cuda"
 
 # Model parameters
 model:
-  hidden_dim: 128
+  hidden_dim: 64
   input_dim: 2
 
 # TTF parameters
@@ -23,7 +23,7 @@ ttf:
 # Data parameters
 data:
   data_file: "data/ST2.npy"
-  num_samples: 200000
+  num_samples: 50000
   train_ratio: 0.8  # 80% train, 20% test
 
 # Output parameters

@@ -9,7 +9,6 @@ from utils import (
 
 
 def main():
-    """Simplified main function with 4 clear blocks"""
 
     # Parse arguments and setup configuration
     args = parse_arguments()

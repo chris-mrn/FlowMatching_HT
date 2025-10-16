@@ -76,6 +76,7 @@ class HeavyT_MLP(nn.Module):
         output = self.main(h)
 
         return output.reshape(*sz)
+
 class MLP(nn.Module):
     def __init__(self, input_dim: int = 2, time_dim: int = 1, hidden_dim: int = 128):
         super().__init__()

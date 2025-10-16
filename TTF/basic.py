@@ -40,7 +40,7 @@ class basicTTF(torch.nn.Module):
         x = (torch.pow(g, - lambd_s) - 1) / lambd_s
         x =  sign * x * sigma + self.mu
 
-        return 1/4 * x
+        return  x
 
     def log_parameters(self):
         """Log current parameter values for tracking evolution"""
@@ -113,16 +113,3 @@ class basicTTF(torch.nn.Module):
             }
 
         return stats
-
-    def save_parameter_history(self, path: str = 'outputs/ttf_param_history.pt'):
-        """Save parameter history for later analysis"""
-        import os
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        torch.save(self.param_history, path)
-        print(f"Parameter history saved to: {path}")
-
-    def load_parameter_history(self, path: str):
-        """Load parameter history from file"""
-        self.param_history = torch.load(path)
-        self.step_count = len(self.param_history['steps'])
-        print(f"Parameter history loaded from: {path}")

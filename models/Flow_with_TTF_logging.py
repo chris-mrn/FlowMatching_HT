@@ -114,10 +114,3 @@ class GaussFlowMatching_OT_TTF:
         else:
             print("No TTF layer found in the network.")
             return {}
-
-    def save_ttf_history(self, path='outputs/ttf_param_history.pt'):
-        """Save TTF parameter history"""
-        if self.ttf_layer is not None:
-            self.ttf_layer.save_parameter_history(path)
-        else:
-            print("No TTF layer found in the network.")
